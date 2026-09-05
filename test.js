@@ -6,7 +6,7 @@ let code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // strip DOMContentLoaded listener to avoid runtime DOM dependency
 code = code.replace(/window\.addEventListener[\s\S]*$/, "");
 // expose const declarations to sandbox global
-code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;}catch(e){}";
+code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;}catch(e){}";
 
 // fake DOM + localStorage
 const store = {};
@@ -309,7 +309,7 @@ assert("escAttr escapes single quotes", escAttr("a'b").indexOf("&#39;") >= 0);
 
 console.log("=== Test 13: version + privacy ===");
 const code3 = fs.readFileSync("index.html", "utf8");
-assert("footer shows v0.7", code3.includes("JD适配判断器 v0.7"));
+assert("footer shows v0.8", code3.includes("JD适配判断器 v0.8"));
 assert("resume card present", code3.includes("id=\"resumeCard\""));
 assert("clear button present", code3.includes("clearJDInputs"));
 assert("status select present", code3.includes("setHistStatus"));
@@ -357,6 +357,46 @@ assert("null report returns empty", buildAIReportHTML(null) === "");
 assert("empty arrays render dash", buildAIReportHTML({verdict: "谨慎投递", dimensions: [], strengths: [], gaps: [], resumeSuggestions: []}).includes("—"));
 assert("verdict emoji: 推荐=green", buildAIReportHTML(sampleReport).includes("🟢"));
 assert("verdict emoji: 不建议=red", buildAIReportHTML({...sampleReport, verdict: "不建议投递"}).includes("🔴"));
+
+console.log("=== Test 15: 简历文件上传（PDF/Word/TXT本地解析）===");
+// HTML 结构：上传按钮、file input、检查提示条
+assert("upload file input present", code3.includes('id="resumeFile"'));
+assert("file input accepts pdf/docx/txt", code3.includes('accept=".pdf,.docx,.txt"'));
+assert("upload check banner present", code3.includes('id="uploadCheckBanner"'));
+assert("banner shows char count element", code3.includes('id="uploadCharCount"'));
+assert("banner shows source element", code3.includes('id="uploadSource"'));
+assert("upload button triggers file picker", code3.includes("getElementById('resumeFile').click()"));
+assert("handleResumeFile wired to onchange", code3.includes("onchange=\"handleResumeFile(this)\""));
+assert("confirm button exists", code3.includes("confirmResumeUpload()"));
+// 处理函数存在
+assert("handleResumeFile is function", typeof exportFn("handleResumeFile") === "function");
+assert("confirmResumeUpload is function", typeof exportFn("confirmResumeUpload") === "function");
+assert("extractPdfText is function", typeof exportFn("extractPdfText") === "function");
+assert("extractDocxText is function", typeof exportFn("extractDocxText") === "function");
+assert("loadResumeLib is function", typeof exportFn("loadResumeLib") === "function");
+// 解析库 CDN 地址（多源兜底）
+const LIBS = exportFn("RESUME_LIB_URLS");
+assert("RESUME_LIB_URLS has pdfjs sources", Array.isArray(LIBS.pdfjs) && LIBS.pdfjs.length >= 2);
+assert("RESUME_LIB_URLS has mammoth sources", Array.isArray(LIBS.mammoth) && LIBS.mammoth.length >= 2);
+assert("pdfjs from trusted CDN", LIBS.pdfjs.every(u => u.startsWith("https://")));
+assert("mammoth from trusted CDN", LIBS.mammoth.every(u => u.startsWith("https://")));
+// cleanResumeText 纯函数：换行/空格/全角空格清理
+const cleanResumeText = exportFn("cleanResumeText");
+assert("cleanResumeText collapses CRLF", cleanResumeText("a\r\nb\rc") === "a\nb\nc");
+assert("cleanResumeText trims spaces before newline", cleanResumeText("a  \nb") === "a\nb");
+assert("cleanResumeText collapses 3+ newlines", cleanResumeText("a\n\n\n\nb") === "a\n\nb");
+assert("cleanResumeText replaces nbsp", cleanResumeText("a\u00a0\u00a0b") === "a b");
+assert("cleanResumeText collapses double spaces", cleanResumeText("a    b") === "a b");
+assert("cleanResumeText trims ends", cleanResumeText("  hello  ") === "hello");
+assert("cleanResumeText null-safe", cleanResumeText(null) === "" && cleanResumeText(undefined) === "");
+// 覆盖确认与太少文字防护逻辑存在于源码
+assert("overwrite confirm guard present", code3.includes("上传将覆盖编辑区当前的简历内容"));
+assert("too-short text guard present", code3.includes("识别出的文字太少"));
+assert("doc old-format rejection message present", code3.includes(".doc 老格式浏览器无法解析"));
+assert("upload stays local (privacy wording)", code3.includes("本地解析，文件不上传"));
+// 隐私：CDN 域名白名单不含私有地址
+assert("no localhost in lib urls", !JSON.stringify(LIBS).includes("localhost"));
+assert("no 127.0.0.1 in lib urls", !JSON.stringify(LIBS).includes("127.0.0.1"));
 
 console.log("\n=== Results: " + pass + " passed, " + fail + " failed ===");
 if (fail > 0) process.exit(1);

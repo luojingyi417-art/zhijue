@@ -229,15 +229,27 @@
     <!-- 我的储备简历 -->
     <div class="card" id="resumeCard">
       <h2>📄 我的储备简历 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="resumeCount"></span></h2>
-      <p class="hint">可存多份简历全文（如通用版 / 运营版 / BA版），随时点开对照查看；也用于贴JD时快速取用。仅存本地浏览器，不上传。</p>
+      <p class="hint">可存多份简历全文（如通用版 / 运营版 / BA版），随时点开对照查看；也用于贴JD时快速取用。支持上传 PDF/Word/TXT 自动识别文字（本地解析，文件不上传），识别后需人工检查确认。仅存本地浏览器。</p>
       <div id="resumeList"></div>
       <div style="margin-top:10px;">
         <label>简历名称</label>
         <input type="text" id="resumeName" placeholder="例：互联网运营版">
       </div>
       <div style="margin-top:10px;">
-        <label>简历全文（点击上方已存的简历可载入查看/编辑）</label>
-        <textarea id="resumeText" placeholder="粘贴简历全文…点「保存简历」存入储备区"></textarea>
+        <label>简历全文（点击上方已存的简历可载入查看/编辑，或上传文件自动识别）</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <button class="btn btn-ghost" onclick="document.getElementById('resumeFile').click()">📤 上传 PDF / Word / TXT</button>
+          <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display:none" onchange="handleResumeFile(this)">
+          <span id="uploadMsg" style="font-size:12.5px;color:var(--sub);"></span>
+        </div>
+        <div id="uploadCheckBanner" class="hidden" style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--ink);">
+          <b>✅ 已自动识别 <span id="uploadCharCount">0</span> 字（来源：<span id="uploadSource">-</span>）。</b>
+          机器识别可能有错漏（尤其PDF可能丢换行、Word表格文字可能乱序），请<b>通读下方编辑区逐段检查</b>：①姓名/联系方式是否完整；②经历条目有无缺失或串行；③有无乱码。确认无误后再点「💾 保存简历」。
+          <div style="margin-top:8px;">
+            <button class="btn btn-ghost" onclick="confirmResumeUpload()">我已检查无误</button>
+          </div>
+        </div>
+        <textarea id="resumeText" placeholder="粘贴简历全文，或点上方「上传 PDF / Word / TXT」自动识别…点「保存简历」存入储备区"></textarea>
       </div>
       <div class="actions">
         <button class="btn btn-primary" onclick="saveResume()">💾 保存简历</button>
@@ -333,7 +345,7 @@
       </div>
     </div>
 
-    <div class="footer-note">JD适配判断器 v0.7 · 规则引擎 + 可选AI深度分析（DeepSeek） · 储备简历 + JD一键清空 + 投递状态跟踪 + 画像导入导出 + 权重可调 + 引导式红线 + 检测历史 · 画像与历史仅存本地浏览器；仅点击「AI分析」时上传简历与JD · AI做执行，人做判断</div>
+    <div class="footer-note">JD适配判断器 v0.8 · 规则引擎 + 可选AI深度分析（DeepSeek） · 储备简历（支持PDF/Word上传识别+人工检查）+ JD一键清空 + 投递状态跟踪 + 画像导入导出 + 权重可调 + 引导式红线 + 检测历史 · 画像与历史仅存本地浏览器；文件解析在本地完成，仅点击「AI分析」时上传简历与JD · AI做执行，人做判断</div>
   </div>
 </div>
 
@@ -422,6 +434,100 @@ function saveHistory(arr){
 }
 
 /* ---------- 储备简历（本地，可存多份） ---------- */
+/* ---------- 简历文件上传（PDF/Word/TXT，浏览器本地解析，文件不上传） ---------- */
+const RESUME_LIB_URLS = {
+  pdfjs: [
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"
+  ],
+  mammoth: [
+    "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js",
+    "https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"
+  ]
+};
+function loadScriptOnce(url){
+  return new Promise(function(resolve, reject){
+    const s = document.createElement("script");
+    s.src = url;
+    s.onload = function(){ resolve(true); };
+    s.onerror = function(){ reject(new Error("script load fail")); };
+    document.head.appendChild(s);
+  });
+}
+async function loadResumeLib(kind){
+  const urls = RESUME_LIB_URLS[kind] || [];
+  for(let i=0;i<urls.length;i++){
+    try{ await loadScriptOnce(urls[i]); return true; }catch(e){}
+  }
+  return false;
+}
+function cleanResumeText(raw){
+  return String(raw == null ? "" : raw)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+async function extractPdfText(file){
+  const ok = await loadResumeLib("pdfjs");
+  if(!ok || !window.pdfjsLib) throw new Error("PDF解析组件加载失败（请检查网络后重试，或直接粘贴文字）");
+  const buf = await file.arrayBuffer();
+  const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  const pages = [];
+  for(let i=1;i<=doc.numPages;i++){
+    const pg = await doc.getPage(i);
+    const tc = await pg.getTextContent();
+    const text = tc.items.map(function(it){ return (it.str || "") + (it.hasEOL ? "\n" : ""); }).join("");
+    pages.push(text.trim());
+  }
+  return pages.join("\n\n");
+}
+async function extractDocxText(file){
+  const ok = await loadResumeLib("mammoth");
+  if(!ok || !window.mammoth) throw new Error("Word解析组件加载失败（请检查网络后重试，或直接粘贴文字）");
+  const buf = await file.arrayBuffer();
+  const res = await window.mammoth.extractRawText({ arrayBuffer: buf });
+  return res && res.value ? res.value : "";
+}
+function setUploadMsg(text){ const m = document.getElementById("uploadMsg"); if(m) m.textContent = text || ""; }
+async function handleResumeFile(input){
+  const file = input && input.files && input.files[0];
+  if(!file) return;
+  setUploadMsg("正在识别「" + file.name + "」…");
+  try{
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    let text = "", source = "";
+    if(ext === "txt"){ text = await file.text(); source = "TXT文本"; }
+    else if(ext === "pdf"){ text = await extractPdfText(file); source = "PDF"; }
+    else if(ext === "docx"){ text = await extractDocxText(file); source = "Word(docx)"; }
+    else{ throw new Error("暂不支持 ." + ext + " 文件：请另存为 PDF / docx / txt 后再上传（.doc 老格式浏览器无法解析）"); }
+    text = cleanResumeText(text);
+    if(text.length < 50) throw new Error("识别出的文字太少（" + text.length + " 字）：可能是扫描/图片版PDF（没有文字层），请改用文字版文件或直接粘贴");
+    const t = document.getElementById("resumeText");
+    if(t){
+      if(t.value.trim() && !confirm("上传将覆盖编辑区当前的简历内容，是否继续？")){ setUploadMsg("已取消上传"); if(input) input.value = ""; return; }
+      t.value = text;
+    }
+    const n = document.getElementById("resumeName");
+    if(n && !n.value.trim()) n.value = file.name.replace(/\.[^.]+$/, "");
+    const cnt = document.getElementById("uploadCharCount"); if(cnt) cnt.textContent = String(text.length);
+    const src = document.getElementById("uploadSource"); if(src) src.textContent = source;
+    const banner = document.getElementById("uploadCheckBanner"); if(banner) banner.classList.remove("hidden");
+    setUploadMsg("✓ 已识别 " + text.length + " 字，请检查下方编辑区");
+  }catch(e){
+    setUploadMsg("");
+    alert("文件识别失败：" + (e && e.message ? e.message : e));
+  }
+  if(input) input.value = "";
+}
+function confirmResumeUpload(){
+  const b = document.getElementById("uploadCheckBanner");
+  if(b) b.classList.add("hidden");
+  setUploadMsg("✓ 已确认，可点「💾 保存简历」存入储备区");
+}
+
 function loadResumes(){
   try{
     const s = localStorage.getItem("jdfit_resumes");
