@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JD适配判断器 · AI辅助实习决策</title>
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#ffffff; --ink:#1f2430; --sub:#5b6472; --line:#e6e9f0;
+    --blue:#2b5cff; --blue-bg:#eef2ff; --green:#0f9d58; --green-bg:#e8f5ee;
+    --amber:#c77700; --amber-bg:#fdf3e2; --red:#d93025; --red-bg:#fceae9;
+    --chip:#f0f3f9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.6;}
+  .wrap{max-width:980px; margin:0 auto; padding:24px 16px 60px;}
+  header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;}
+  h1{font-size:26px; letter-spacing:.5px;}
+  h1 .logo{color:var(--blue);}
+  .tagline{color:var(--sub); font-size:13.5px; margin-bottom:20px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(20,30,60,.04);}
+  .card h2{font-size:16px; margin-bottom:12px; display:flex; align-items:center; gap:8px;}
+  .card h2 .num{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:var(--blue); color:#fff; font-size:13px;}
+  label{font-size:13px; color:var(--sub); display:block; margin-bottom:6px;}
+  input[type=text], textarea, select{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-size:14px; font-family:inherit; background:#fbfcfe; color:var(--ink); resize:vertical;
+  }
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--blue-bg); border-color:var(--blue);}
+  textarea{min-height:150px;}
+  .row{display:flex; gap:12px; flex-wrap:wrap;}
+  .row>div{flex:1; min-width:160px;}
+  .btn{display:inline-flex; align-items:center; gap:6px; border:none; border-radius:10px; padding:11px 22px; font-size:15px; font-weight:600; cursor:pointer; transition:.15s;}
+  .btn-primary{background:var(--blue); color:#fff;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:var(--chip); color:var(--ink); font-weight:500; padding:8px 14px; font-size:13px;}
+  .btn-ghost:hover{background:#e4e9f4;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .actions{display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap;}
+  .demo-links{font-size:13px; color:var(--sub); margin-top:8px;}
+  .demo-links a{color:var(--blue); cursor:pointer; text-decoration:none; margin-right:12px;}
+  .chip{display:inline-block; background:var(--chip); border-radius:999px; padding:2px 10px; font-size:12.5px; margin:2px 4px 2px 0; color:#333c4d;}
+  .chip.hit{background:var(--green-bg); color:#0b6e40;}
+  .chip.miss{background:var(--red-bg); color:#a5231b;}
+  .chip.warn{background:var(--amber-bg); color:#8a5a00;}
+  .verdict{border-radius:14px; padding:20px; margin-bottom:16px; border:1px solid var(--line);}
+  .verdict.green{background:var(--green-bg); border-color:#bfe3cf;}
+  .verdict.amber{background:var(--amber-bg); border-color:#f0d9ac;}
+  .verdict.red{background:var(--red-bg); border-color:#f3c4c0;}
+  .verdict .big{font-size:22px; font-weight:800; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .verdict .score{font-size:15px; font-weight:600; opacity:.85;}
+  .verdict .reason{margin-top:8px; font-size:14px;}
+  .dim{border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px; background:#fbfcfe;}
+  .dim-top{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
+  .dim-name{font-weight:700; font-size:14.5px;}
+  .dim-score{font-weight:800; font-size:16px; min-width:52px; text-align:right;}
+  .ev{margin-top:8px;}
+  .slider-row{display:flex; align-items:center; gap:10px; margin-top:10px;}
+  input[type=range]{flex:1; accent-color:var(--blue);}
+  .slider-row .val{font-weight:700; width:44px; text-align:center; background:var(--chip); border-radius:8px; padding:2px 0; font-size:14px;}
+  .dim-note{font-size:12.5px; color:var(--sub); margin-top:6px;}
+  .veto-item{border-radius:10px; padding:12px 14px; margin-bottom:8px; font-size:14px;}
+  .veto-item.v{background:var(--red-bg); color:#8f1d16;}
+  .veto-item.w{background:var(--amber-bg); color:#7a5000;}
+  .veto-item.pass{background:#f2f4f8; color:var(--sub);}
+  .advice-item{display:flex; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); font-size:14px; flex-wrap:wrap;}
+  .advice-item:last-child{border-bottom:none;}
+  .advice-item b{flex:0 0 88px; color:var(--sub); font-weight:600;}
+  details summary{cursor:pointer; font-size:13.5px; color:var(--blue); user-select:none;}
+  pre{background:#0e1526; color:#dbe4ff; border-radius:10px; padding:14px; font-size:12.5px; overflow:auto; margin-top:10px; line-height:1.5;}
+  .footer-note{font-size:12.5px; color:var(--sub); text-align:center; margin-top:26px;}
+  .hidden{display:none;}
+  .copy-ok{color:var(--green); font-size:13px; margin-left:8px;}
+  .tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .tab{padding:8px 16px; border-radius:10px; background:var(--chip); cursor:pointer; font-size:14px; font-weight:600; color:var(--sub);}
+  .tab.active{background:var(--blue); color:#fff;}
+  .tabpane{display:none;}
+  .tabpane.active{display:block;}
+  .hint{font-size:12.5px; color:var(--sub); margin-top:6px; line-height:1.5;}
+  .ov-row{display:flex; gap:10px; padding:8px 0; border-bottom:1px dashed var(--line); font-size:14px; flex-wrap:wrap;}
+  .ov-row:last-child{border-bottom:none;}
+  .ov-row b{flex:0 0 92px; color:var(--sub); font-weight:600;}
+  .privacy-badge{display:inline-flex; align-items:center; gap:6px; background:var(--green-bg); color:#0b6e40; border-radius:999px; padding:4px 12px; font-size:12.5px; font-weight:600; margin-bottom:14px;}
+  /* 引导式红线输入 */
+  .veto-guide{border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:#fbfcfe; transition:.15s;}
+  .veto-guide:hover{border-color:var(--blue);}
+  .veto-guide .vg-label{font-weight:600; font-size:14px; display:flex; align-items:center; gap:8px;}
+  .veto-guide .vg-badge{font-size:11px; padding:2px 8px; border-radius:6px; font-weight:600; flex-shrink:0;}
+  .veto-guide .vg-badge.warn{background:var(--amber-bg); color:#8a5a00;}
+  .veto-guide .vg-badge.veto{background:var(--red-bg); color:#a5231b;}
+  .veto-guide .vg-hint{font-size:12.5px; color:var(--sub); margin-top:4px; line-height:1.5;}
+  .veto-guide input[type=text]{margin-top:8px; font-size:13.5px;}
+  .hist-item{display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:#fbfcfe; cursor:pointer; transition:.15s;}
+  .hist-item:hover{border-color:var(--blue); background:var(--blue-bg);}
+  .hist-item .hi-left{flex:1; min-width:0;}
+  .hist-item .hi-title{font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .hist-item .hi-meta{font-size:12.5px; color:var(--sub); margin-top:2px;}
+  .hist-item .hi-score{font-weight:800; font-size:15px; flex-shrink:0;}
+  .hist-item .hi-del{background:none; border:none; color:var(--red); cursor:pointer; font-size:16px; padding:4px 8px; border-radius:6px; flex-shrink:0;}
+  .hist-item .hi-del:hover{background:var(--red-bg);}
+  .hist-badge{display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600;}
+  .hist-badge.green{background:var(--green-bg); color:#0b6e40;}
+  .hist-badge.amber{background:var(--amber-bg); color:#8a5a00;}
+  .hist-badge.red{background:var(--red-bg); color:#a5231b;}
+  .hi-status{display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600;}
+  .hi-status.s0{background:var(--chip); color:#333c4d;}
+  .hi-status.s1{background:var(--blue-bg); color:var(--blue);}
+  .hi-status.s2{background:var(--amber-bg); color:#8a5a00;}
+  .hi-status.s3{background:#eef0f5; color:var(--sub);}
+  .hi-status.s4{background:var(--red-bg); color:#a5231b;}
+  .hi-track{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .hi-track select{flex:0 0 118px; min-width:118px; width:auto; padding:6px 8px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font-family:inherit; cursor:pointer;}
+  .hi-track input{flex:1; min-width:150px; width:auto; padding:6px 10px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font-family:inherit;}
+  .hi-note{font-size:12.5px; color:var(--sub); margin-top:4px; word-break:break-all;}
+  .rb-x{margin-left:6px; color:#a5231b; font-weight:700; cursor:pointer;}
+  @media(max-width:640px){ h1{font-size:21px;} .advice-item b, .ov-row b{flex-basis:100%;} .hi-track{flex-direction:column;} .hi-track select{flex:1 1 auto; min-width:0;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= 入职引导：个人画像设计 ================= -->
+  <div id="onboarding" class="card">
+    <span class="privacy-badge">🔒 本地运行 · 你的信息只存在自己浏览器，不会上传</span>
+    <h1 style="margin-bottom:6px;"><span class="logo">◉</span> 先设计你的个人画像</h1>
+    <p class="tagline" style="margin-bottom:16px;">这个工具靠"你的经历资产"去匹配 JD。请先告诉我们你是谁、有什么牌——三种方式任选：<b>引导填写</b> / <b>贴简历自动生成</b> / <b>导入已有画像</b>。填完信息只存在你本地浏览器（换设备用「导出画像」迁移）。</p>
+
+    <div class="tabs">
+      <div class="tab active" id="tabGuide" onclick="switchTab('guide')">✍️ 引导填写</div>
+      <div class="tab" id="tabPaste" onclick="switchTab('paste')">📋 粘贴简历自动生成</div>
+      <div class="tab" id="tabImport" onclick="switchTab('import')">📥 导入已有画像</div>
+    </div>
+
+    <!-- 引导填写 -->
+    <div class="tabpane active" id="paneGuide">
+      <div class="card" style="box-shadow:none; background:#fbfcfe;">
+        <div class="row">
+          <div><label>姓名（选填）</label><input type="text" id="g_name" placeholder="例：张三"></div>
+          <div><label>学校</label><input type="text" id="g_school" placeholder="例：某大学"></div>
+          <div><label>专业 / 年级</label><input type="text" id="g_major" placeholder="例：金融学 研二"></div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <div><label>可到岗时间</label><input type="text" id="g_avail" placeholder="例：随时到岗"></div>
+          <div><label>每周天数</label><input type="text" id="g_days" placeholder="例：5天"></div>
+          <div><label>可实习月数（上限）</label><input type="text" id="g_months" placeholder="例：6"></div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>实习 / 项目经历（每段写清 公司·角色·做了什么，可写多段）</label>
+          <textarea id="g_exp" placeholder="例：
+某快消公司 · 市场部实习生（2025.6-9）
+参与新品校园推广，用Excel搭建投放效果跟踪表，复盘各渠道转化数据并输出建议。
+某互联网公司 · 用户增长实习生（2026.1-5）
+策划A/B测试落地页文案，分析各渠道转化漏斗，输出周报与投放优化建议。"></textarea>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <div><label>已掌握的技能（选填）</label><input type="text" id="g_skills" placeholder="例：Excel、SQL、PPT"></div>
+          <div><label>短板 / 在学的技能（选填）</label><input type="text" id="g_gaps" placeholder="例：Python（在学）；其他暂无"></div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>求职意向与方向优先级（选填）</label>
+          <textarea id="g_intent" style="min-height:80px;" placeholder="例：主攻用户运营，商业分析并行；不投纯电销与客服岗"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 粘贴简历 -->
+    <div class="tabpane" id="panePaste">
+      <div class="card" style="box-shadow:none; background:#fbfcfe;">
+        <label>把你的简历全文粘贴到这里</label>
+        <textarea id="p_resume" placeholder="粘贴简历全文…系统会自动识别你的姓名、学校，并从经历里抽取可匹配的能力标签（咨询 / 行业研究 / 竞品 / 用户调研 / 数据分析 / AI工具 / 互联网 / 垂直行业 / 方法论沉淀 等）"></textarea>
+        <label style="margin-top:14px;">或从「储备简历」直接导入（可选）</label>
+        <select id="pasteFromBank" onchange="fillPasteFromBank(this.value)"><option value="">— 选择一份已保存的简历 —</option></select>
+        <div style="margin-top:12px;">
+          <label>求职意向与方向优先级（选填）</label>
+          <textarea id="p_intent" style="min-height:70px;" placeholder="例：主攻用户运营，商业分析并行"></textarea>
+        </div>
+        <p class="hint">自动生成是<b>启发式抽取</b>（从文本里识别关键词并生成标签+例句），不是魔法——生成后你可以在下一步「高级编辑」里增删改任何一条。</p>
+      </div>
+    </div>
+
+    <!-- 导入画像 -->
+    <div class="tabpane" id="paneImport">
+      <div class="card" style="box-shadow:none; background:#fbfcfe;">
+        <label>方式一：选择之前导出的画像文件（.json）</label>
+        <input type="file" id="importFile" accept=".json,application/json" onchange="importProfileFile(this)" style="font-size:13.5px; border:1px solid var(--line); border-radius:10px; padding:8px 12px; background:#fff;">
+        <label style="margin-top:14px;">方式二：把画像JSON直接粘贴到这里</label>
+        <textarea id="importText" style="min-height:130px; font-size:12.5px;" placeholder='{"app":"jd-fit-agent", "profile": { ... }} 或直接粘贴画像对象'></textarea>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="importFromPaste()">📥 导入并进入</button>
+          <span id="importMsg" class="copy-ok"></span>
+        </div>
+        <p class="hint">换浏览器、换电脑、或清了缓存？用之前「导出画像」保存的JSON文件一键恢复你的画像和红线设置（不含检测历史与储备简历）。文件只在你本地读取，不会上传。</p>
+      </div>
+    </div>
+
+    <!-- 我的一票否决红线（引导式自填，各tab共享） -->
+    <div class="card" style="box-shadow:none; background:#fbfcfe; margin-top:16px;">
+      <h2 style="font-size:15px;">🚫 我的一票否决红线 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（自己填关键词，逗号分隔）</span></h2>
+      <p class="hint" style="margin-bottom:10px;">以下每个分类你填入关键词（逗号或顿号分隔），贴入JD时自动检查是否命中。留空 = 该分类不检查。实习时长会根据你上面填的月数上限自动判断。</p>
+      <div id="vetoGuideList"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="buildProfile()" id="buildBtn">✅ 生成画像并进入</button>
+      <span id="buildMsg" class="copy-ok"></span>
+    </div>
+  </div>
+
+  <!-- ================= 主应用 ================= -->
+  <div id="mainApp" class="hidden">
+    <header>
+      <h1><span class="logo">◉</span> JD适配判断器</h1>
+      <button class="btn btn-ghost" onclick="backToOnboarding()">↺ 重新设计画像</button>
+    </header>
+    <p class="tagline">贴入实习JD → 自动跑一票否决检查 + 六维评分建议 → 你做最终判断。原则：<b>AI做执行，人做判断</b>。</p>
+
+    <!-- 画像概览 -->
+    <div class="card" id="ovCard">
+      <h2>👤 当前画像概览（本地数据）</h2>
+      <div id="ovBox"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="toggleProfile()">⚙️ 高级编辑（JSON）</button>
+        <button class="btn btn-ghost" onclick="toggleVetoEditor()">🚫 编辑我的红线</button>
+        <button class="btn btn-ghost" onclick="exportProfile()">📤 导出画像</button>
+        <button class="btn btn-ghost" onclick="clearAll()">🗑️ 清空重填</button>
+      </div>
+    </div>
+
+    <!-- 我的储备简历 -->
+    <div class="card" id="resumeCard">
+      <h2>📄 我的储备简历 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="resumeCount"></span></h2>
+      <p class="hint">可存多份简历全文（如通用版 / 运营版 / BA版），随时点开对照查看；也用于贴JD时快速取用。仅存本地浏览器，不上传。</p>
+      <div id="resumeList"></div>
+      <div style="margin-top:10px;">
+        <label>简历名称</label>
+        <input type="text" id="resumeName" placeholder="例：互联网运营版">
+      </div>
+      <div style="margin-top:10px;">
+        <label>简历全文（点击上方已存的简历可载入查看/编辑）</label>
+        <textarea id="resumeText" placeholder="粘贴简历全文…点「保存简历」存入储备区"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveResume()">💾 保存简历</button>
+        <button class="btn btn-ghost" onclick="newResumeDraft()">＋ 新建一份</button>
+        <button class="btn btn-ghost" onclick="copyResumeText()">📋 复制全文</button>
+        <span id="resumeMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 红线编辑面板 -->
+    <div class="card hidden" id="vetoCard">
+      <h2>🚫 我的一票否决红线（可编辑）</h2>
+      <p style="font-size:13px;color:var(--sub);margin-bottom:10px;">每个分类填入你自己的关键词（逗号分隔），留空则该分类不检查。修改后点「保存红线」，下次分析时生效。实习时长根据画像中的月数上限自动判断。</p>
+      <div id="vetoEditList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveVetoes()">保存红线</button>
+        <span id="vetoSaveMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 画像高级编辑 -->
+    <div class="card hidden" id="profileCard">
+      <h2>⚙️ 画像编辑（知识库，可编辑）</h2>
+      <p style="font-size:13px;color:var(--sub);margin-bottom:10px;">评分引擎会拿这些资产标签去JD里找命中。修改后点「保存画像」，数据存在本地浏览器。结构说明：name/basics/maxMonths 为基础信息；assets 为你的能力资产（label名称、pattern匹配关键词、story面试故事）；skillGaps 为短板；vetoes 为你的否决红线（每项含cat分类、label标签、keywords关键词、mode模式）；intent 为求职意向。</p>
+      <textarea id="profileEditor" style="min-height:300px; font-size:12.5px;"></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveProfile()">保存画像</button>
+        <span id="profileMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 岗位检测历史 -->
+    <div class="card" id="historyCard">
+      <h2>📋 岗位检测历史 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="histCount"></span></h2>
+      <div id="historyBox"></div>
+      <div class="actions" id="histActions" style="display:none;">
+        <button class="btn btn-ghost" onclick="clearHistory()">🗑️ 清空全部历史</button>
+      </div>
+    </div>
+
+    <!-- 输入 -->
+    <div class="card">
+      <h2><span class="num">1</span> 贴入JD</h2>
+      <div class="row">
+        <div><label>岗位名称（选填）</label><input type="text" id="jdTitle" placeholder="例：商业分析实习生"></div>
+        <div><label>公司（选填）</label><input type="text" id="jdCompany" placeholder="例：Kimi / 月之暗面"></div>
+      </div>
+      <div style="margin-top:12px;">
+        <label>JD全文</label>
+        <textarea id="jdText" placeholder="把职位描述全文粘贴到这里…"></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="analyze()">⚡ 开始分析</button>
+        <button class="btn btn-ghost" onclick="clearJDInputs()">🧹 一键清空</button>
+        <button class="btn btn-ghost" onclick="loadDemo('kimi')">示例：Kimi增长管培</button>
+        <button class="btn btn-ghost" onclick="loadDemo('seo')">示例：SEO&GEO增长</button>
+        <span id="clearMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 结果 -->
+    <div id="result" class="hidden">
+      <div id="verdictBox"></div>
+
+      <div class="card">
+        <h2>🚫 一票否决检查 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（基于你的红线设置）</span></h2>
+        <div id="vetoBox"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">2</span> 六维评分 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（系统建议分，可用滑杆改成你的判断）</span></h2>
+        <div id="dimsBox"></div>
+        <div style="margin-top:6px; font-size:13px; color:var(--sub);">总分（按权重加权）：<b id="totalScore" style="font-size:16px;color:var(--ink);"></b> / 12 · 权重调0 = 该维度不计入 · <a style="color:var(--blue);cursor:pointer;" onclick="resetWeights()">重置为等权</a></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">3</span> 投递建议</h2>
+        <div id="adviceBox"></div>
+        <div class="actions">
+          <button class="btn btn-ghost" onclick="copyReport()">📋 复制评估报告</button>
+          <span id="copyMsg" class="copy-ok"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">JD适配判断器 v0.6 · 规则引擎原型 · 储备简历 + JD一键清空 + 投递状态跟踪 + 画像导入导出 + 权重可调 + 引导式红线 + 检测历史 · 你的画像与简历仅存于本地浏览器 · AI做执行，人做判断</div>
+  </div>
+</div>
+
+<script>
+/* ============ 空白模板（无任何人真实信息） ============ */
+const BLANK_PROFILE = {
+  "name": "",
+  "basics": "",
+  "maxMonths": 6,
+  "assets": [],
+  "skillGaps": [],
+  "vetoes": [],
+  "intent": ""
+};
+
+/* ============ 否决红线分类（引导式，用户自己填关键词） ============ */
+const VETO_CATEGORIES = [
+  {cat:"boringWork", label:"不喜欢的工作内容",
+   hint:"出现这些关键词说明岗位偏枯燥执行（拉数据、做纪要、排版PPT、翻译报告…）",
+   placeholder:"会议纪要, 排版PPT, 翻译英文报告, 拉取数据, 资料录入",
+   mode:"warn"},
+  {cat:"skillGaps", label:"技能短板（JD硬要求但我不会的）",
+   hint:"JD里出现且标了'精通/熟练/必须'就是硬伤（财务建模、估值、特定工具…）",
+   placeholder:"Python, 机器学习, 财务建模",
+   mode:"veto"},
+  {cat:"majorMismatch", label:"专业 / 背景不匹配",
+   hint:"JD限定了我没有的专业或学科背景",
+   placeholder:"理工科优先, 计算机专业, 统计学优先",
+   mode:"veto"},
+  {cat:"direction", label:"不想做的岗位方向",
+   hint:"这些方向你明确不想走（纯电销、客服、夜班…）",
+   placeholder:"纯电销, 客服专员, 地推",
+   mode:"veto"},
+  {cat:"custom", label:"其他否决关键词",
+   hint:"任意你想设的红线，逗号分隔",
+   placeholder:"自定义关键词",
+   mode:"veto"}
+];
+
+/* ============ 大厂背书名单（用于成长价值判断，不含个人信息） ============ */
+const STRONG_BRANDS = /(字节|抖音|tiktok|腾讯|阿里|蚂蚁|百度|美团|京东|快手|小红书|拼多多|华为|网易|b站|哔哩|Kimi|月之暗面|deepseek|智谱|minimax|阶跃|大疆|理想|蔚来|小鹏|米哈游|滴滴|携程)/;
+
+/* ============ 能力标签词典（启发式抽取用） ============ */
+const DOMAIN_VOCAB = [
+  {label:"咨询公司经历", kw:["咨询","consulting","战略咨询","管理咨询"]},
+  {label:"行业研究/研报", kw:["行业研究","研报","研究报告","行业分析","行研"]},
+  {label:"竞品/标杆分析", kw:["竞品","对标","竞争对手","标杆","benchmark"]},
+  {label:"用户调研/问卷", kw:["用户调研","问卷","访谈","用户研究","用研","用户洞察","研究用户","焦点小组"]},
+  {label:"数据分析/建模", kw:["数据分析","数据处理","数据清洗","数据建模","建模","指标","漏斗","A/B","abtest"]},
+  {label:"AI工具应用", kw:["AI","大模型","LLM","Agent","智能体","AIGC","prompt","提示词","Copilot","ChatGPT"]},
+  {label:"互联网产品经历", kw:["互联网","大厂","APP","App","产品","线上","C端","B端"]},
+  {label:"垂直行业认知", kw:["医药","医疗","健康","大健康","药学","金融","消费","电商","游戏","汽车","教育","物流"]},
+  {label:"方法论/SOP沉淀", kw:["可复用","复用","方法论","SOP","标准化","沉淀","流程","框架","可以复用的方法"]},
+  {label:"项目管理/0到1", kw:["从0到1","从零到一","主导","独立负责","项目发起","项目管理","推进落地","主动发起"]},
+  {label:"内容/用户运营", kw:["内容运营","社群运营","用户运营","活动运营","增长","投放","新媒体","用户分层","客群","触达","转化","留存","复购","私域","用户生命周期"]},
+  {label:"编程/数据工具", kw:["Python","SQL","R语言","Java","前端","爬虫","Tableau","PowerBI","BI"]}
+];
+
+let PROFILE = loadProfile();
+let lastAnalysis = null;
+
+/* ---------- 存储（仅本地） ---------- */
+function loadProfile(){
+  try{
+    const s = localStorage.getItem("jdfit_profile");
+    if(s) return JSON.parse(s);
+  }catch(e){}
+  return null;
+}
+function saveProfileObj(p){
+  PROFILE = p;
+  try{ localStorage.setItem("jdfit_profile", JSON.stringify(p)); }catch(e){}
+}
+function loadHistory(){
+  try{
+    const s = localStorage.getItem("jdfit_history");
+    if(s) return JSON.parse(s);
+  }catch(e){}
+  return [];
+}
+function saveHistory(arr){
+  try{ localStorage.setItem("jdfit_history", JSON.stringify(arr.slice(0,50))); }catch(e){}
+}
+
+/* ---------- 储备简历（本地，可存多份） ---------- */
+function loadResumes(){
+  try{
+    const s = localStorage.getItem("jdfit_resumes");
+    if(s){ const a = JSON.parse(s); if(Array.isArray(a)) return a; }
+  }catch(e){}
+  return [];
+}
+function saveResumes(arr){
+  try{ localStorage.setItem("jdfit_resumes", JSON.stringify(arr.slice(0,20))); }catch(e){}
+}
+let currentResumeId = null;
+function renderResumeList(){
+  const box = document.getElementById("resumeList");
+  const cnt = document.getElementById("resumeCount");
+  const list = loadResumes();
+  if(cnt) cnt.textContent = list.length ? "（"+list.length+"份）" : "";
+  if(box){
+    box.innerHTML = list.length ? list.map(r=>
+      '<span class="chip'+(r.id===currentResumeId?' hit':'')+'" style="cursor:pointer;" onclick="loadResumeToEditor('+r.id+')" title="点击载入查看">'+esc(r.name||"未命名")+'<span class="rb-x" onclick="event.stopPropagation();deleteResume('+r.id+')" title="删除这份简历">×</span></span>'
+    ).join("") : '<span style="font-size:13px;color:var(--sub);">暂无储备简历：粘贴一份并点「保存简历」。</span>';
+  }
+  renderPasteFromBank();
+}
+function loadResumeToEditor(id){
+  const r = loadResumes().find(x=>x.id===id);
+  if(!r) return;
+  currentResumeId = id;
+  const n = document.getElementById("resumeName"); if(n) n.value = r.name || "";
+  const t = document.getElementById("resumeText"); if(t) t.value = r.text || "";
+  renderResumeList();
+}
+function saveResume(){
+  const name = val("resumeName") || "未命名简历";
+  const text = val("resumeText");
+  if(!text){ msg("resumeMsg", "⚠️ 请先粘贴简历内容"); return; }
+  let list = loadResumes();
+  if(currentResumeId){
+    const it = list.find(x=>x.id===currentResumeId);
+    if(it){ it.name = name; it.text = text; it.updatedAt = nowStr(); saveResumes(list); renderResumeList(); msg("resumeMsg", "✓ 已更新"); return; }
+  }
+  const item = {id: Date.now(), name: name, text: text, updatedAt: nowStr()};
+  list.unshift(item);
+  currentResumeId = item.id;
+  saveResumes(list);
+  renderResumeList();
+  msg("resumeMsg", "✓ 已保存（仅本地）");
+}
+function newResumeDraft(){
+  currentResumeId = null;
+  const n = document.getElementById("resumeName"); if(n) n.value = "";
+  const t = document.getElementById("resumeText"); if(t) t.value = "";
+  renderResumeList();
+}
+function deleteResume(id){
+  if(!confirm("确定删除这份储备简历？")) return;
+  saveResumes(loadResumes().filter(x=>x.id!==id));
+  if(currentResumeId===id) newResumeDraft();
+  renderResumeList();
+}
+function copyResumeText(){
+  const t = val("resumeText");
+  if(!t){ msg("resumeMsg", "⚠️ 当前编辑区为空"); return; }
+  navigator.clipboard.writeText(t).then(()=>msg("resumeMsg","✓ 已复制全文")).catch(()=>{
+    const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta); msg("resumeMsg","✓ 已复制");
+  });
+}
+function renderPasteFromBank(){
+  const sel = document.getElementById("pasteFromBank");
+  if(!sel) return;
+  const list = loadResumes();
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— 选择一份已保存的简历 —</option>'+
+    list.map(r=>'<option value="'+r.id+'">'+esc(r.name||"未命名")+'</option>').join("");
+  if(cur && list.some(r=>String(r.id)===String(cur))) sel.value = cur;
+}
+function fillPasteFromBank(id){
+  if(!id) return;
+  const r = loadResumes().find(x=>String(x.id)===String(id));
+  if(!r) return;
+  const t = document.getElementById("p_resume");
+  if(t) t.value = r.text || "";
+}
+
+/* ---------- JD输入一键清空 ---------- */
+function clearJDInputs(){
+  ["jdTitle","jdCompany","jdText"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = "";
+  });
+  lastAnalysis = null;
+  const r = document.getElementById("result");
+  if(r) r.classList.add("hidden");
+  msg("clearMsg", "✓ 已清空，可贴下一个JD");
+}
+function msg(id, text){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = text;
+  setTimeout(()=>{ el.textContent=""; }, 2500);
+}
+function val(id){ const el=document.getElementById(id); return el?el.value.trim():""; }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escAttr(s){ return esc(s).replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+function nowStr(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+}
+
+/* ---------- 引导流程切换 ---------- */
+function switchTab(which){
+  ["guide","paste","import"].forEach(k=>{
+    const cap = k.charAt(0).toUpperCase()+k.slice(1);
+    const tab = document.getElementById("tab"+cap);
+    const pane = document.getElementById("pane"+cap);
+    if(tab) tab.classList.toggle("active", which===k);
+    if(pane) pane.classList.toggle("active", which===k);
+  });
+}
+
+/* ---------- 红线引导渲染（onboarding + 编辑面板通用） ---------- */
+function renderVetoGuides(containerId, vetoes){
+  const box = document.getElementById(containerId);
+  if(!box) return;
+  // vetoes: 用户已填的否决项数组，可能为空
+  const savedMap = {};
+  if(vetoes && vetoes.length){
+    vetoes.forEach(v => { savedMap[v.cat] = v.keywords || ""; });
+  }
+  box.innerHTML = VETO_CATEGORIES.map(c => {
+    const saved = savedMap[c.cat] || "";
+    const modeBadge = c.mode === "warn"
+      ? '<span class="vg-badge warn">警告</span>'
+      : '<span class="vg-badge veto">否决</span>';
+    return '<div class="veto-guide">'+
+      '<div class="vg-label">'+esc(c.label)+' '+modeBadge+'</div>'+
+      '<div class="vg-hint">'+esc(c.hint)+'</div>'+
+      '<input type="text" id="'+containerId+'_vg_'+c.cat+'" value="'+esc(saved)+'" placeholder="'+esc(c.placeholder)+'">'+
+    '</div>';
+  }).join("");
+}
+
+/* 从引导输入框读取并构建vetoes数组 */
+function buildVetoesFromInput(containerId){
+  return VETO_CATEGORIES.map(c => {
+    const el = document.getElementById(containerId+"_vg_"+c.cat);
+    const kw = el ? el.value.trim() : "";
+    return {cat:c.cat, label:c.label, keywords:kw, mode:c.mode, hint:c.hint};
+  }).filter(v => v.keywords); // 留空的不存
+}
+
+/* 回填已保存的红线关键词到输入框 */
+function restoreVetoInputs(containerId, vetoes){
+  if(!vetoes) return;
+  const savedMap = {};
+  vetoes.forEach(v => { savedMap[v.cat] = v.keywords || ""; });
+  VETO_CATEGORIES.forEach(c => {
+    const el = document.getElementById(containerId+"_vg_"+c.cat);
+    if(el) el.value = savedMap[c.cat] || "";
+  });
+}
+
+/* ---------- 启发式抽取 ---------- */
+function snippet(text, kw, before=20, after=30, maxlen=60){
+  const i = text.indexOf(kw);
+  if(i < 0) return text.replace(/\s+/g," ").slice(0, maxlen);
+  const s = Math.max(0, i - before);
+  let e = Math.min(text.length, i + kw.length + after);
+  let seg = text.slice(s, e).replace(/\s+/g, " ");
+  return seg.length > maxlen ? seg.slice(0, maxlen) + "…" : seg;
+}
+function extractAssets(text){
+  const out = []; const seen = new Set();
+  DOMAIN_VOCAB.forEach(item=>{
+    for(const kw of item.kw){
+      if(text.indexOf(kw) >= 0){
+        if(seen.has(item.label)) break;
+        seen.add(item.label);
+        out.push({label:item.label, pattern:item.kw.join("|"), story:snippet(text, kw)});
+        break;
+      }
+    }
+  });
+  return out;
+}
+function extractMeta(text){
+  let name = ((text.match(/姓名[:：]?\s*([一-龥]{2,4})/)||[])[1]) || "";
+  if(!name){
+    const m = text.match(/^\s*([一-龥]{2,3})(?=\s*[男女]?\s*[一-龥]*?(?:大学|学院|University|School))/m);
+    if(m) name = m[1];
+  }
+  const school = ((text.match(/([一-龥A-Za-z·]{2,20}?(?:大学|学院|School|University|university))/)||[])[1]) || "";
+  return {name, school};
+}
+
+/* ---------- 生成画像（统一入口） ---------- */
+function buildProfile(){
+  const activeTab = document.getElementById("tabGuide").classList.contains("active") ? "guide" : "paste";
+  let name="", basics="", maxMonths=6, assets=[], skillGaps=[], intent="";
+
+  if(activeTab === "guide"){
+    name = val("g_name");
+    const school = val("g_school");
+    const major = val("g_major");
+    const grad = val("g_avail");
+    const days = val("g_days");
+    maxMonths = parseInt(val("g_months"), 10) || 6;
+    basics = [school, major, grad, days && (days + "/周"), "可实习≤" + maxMonths + "个月"].filter(Boolean).join(" · ");
+    const text = [val("g_exp"), val("g_skills"), val("g_gaps")].join("\n");
+    assets = extractAssets(text);
+    if(!assets.length && val("g_exp")){
+      assets.push({label:"自定义经历", pattern: val("g_exp").replace(/\s+/g,"").slice(0,8), story: val("g_exp").slice(0,40).replace(/\s+/g," ")});
+    }
+    skillGaps = val("g_gaps").split(/[\n、，,；;]/).map(s=>s.trim()).filter(Boolean)
+      .map(g=>({label:g, pattern:g, level:"短板"}));
+    intent = val("g_intent");
+  } else {
+    const text = val("p_resume");
+    intent = val("p_intent");
+    if(!text){ msg("buildMsg", "⚠️ 请先粘贴简历内容"); return; }
+    const meta = extractMeta(text);
+    assets = extractAssets(text);
+    if(!assets.length){
+      assets.push({label:"自定义经历", pattern: text.replace(/\s+/g,"").slice(0,8), story: text.slice(0,40).replace(/\s+/g," ")});
+    }
+    name = meta.name;
+    basics = (meta.school ? meta.school + " · " : "") + "（简历解析自动生成，可在高级编辑中修正）";
+    maxMonths = 6;
+  }
+
+  const vetoes = buildVetoesFromInput("vetoGuideList");
+  const profile = { name, basics, maxMonths, assets, skillGaps, vetoes, intent };
+  enterProfile(profile);
+}
+
+function enterProfile(p){
+  saveProfileObj(p);
+  document.getElementById("onboarding").classList.add("hidden");
+  document.getElementById("mainApp").classList.remove("hidden");
+  renderOverview();
+  renderVetoEditList();
+  renderHistory();
+}
+function backToOnboarding(){
+  document.getElementById("mainApp").classList.add("hidden");
+  document.getElementById("onboarding").classList.remove("hidden");
+  renderVetoGuides("vetoGuideList", PROFILE ? PROFILE.vetoes : []);
+  // 回填基础信息到引导填写表单
+  if(PROFILE){
+    // 尝试拆解 basics 回填
+    const parts = (PROFILE.basics||"").split(" · ");
+    if(parts[0]) document.getElementById("g_school").value = parts[0] || "";
+    if(parts[1]) document.getElementById("g_major").value = parts[1] || "";
+    if(parts[2]) document.getElementById("g_avail").value = parts[2] || "";
+    if(parts[3]) document.getElementById("g_days").value = (parts[3]||"").replace("/周","") || "";
+    if(PROFILE.maxMonths) document.getElementById("g_months").value = PROFILE.maxMonths;
+    if(PROFILE.name) document.getElementById("g_name").value = PROFILE.name;
+    if(PROFILE.intent) document.getElementById("g_intent").value = PROFILE.intent;
+  }
+}
+function clearAll(){
+  if(!confirm("确定清空本地画像并重新填写？")) return;
+  localStorage.removeItem("jdfit_profile");
+  PROFILE = null;
+  backToOnboarding();
+}
+
+/* ---------- 画像导出 / 导入 ---------- */
+function buildExportPayload(){
+  return {app:"jd-fit-agent", version:"0.6", exportedAt:nowStr(), profile:PROFILE || BLANK_PROFILE};
+}
+function exportProfile(){
+  try{
+    const blob = new Blob([JSON.stringify(buildExportPayload(), null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "jd-fit-profile.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(e){} }, 1000);
+  }catch(e){ alert("导出失败："+e.message); }
+}
+function importProfileFile(input){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => importProfileText(String(reader.result||""), "importMsg");
+  reader.readAsText(f, "utf-8");
+  input.value = "";
+}
+function importFromPaste(){
+  const t = val("importText");
+  if(!t){ msg("importMsg", "⚠️ 请先粘贴画像JSON"); return; }
+  importProfileText(t, "importMsg");
+}
+function importProfileText(text, msgId){
+  try{
+    const data = JSON.parse(text);
+    const p = (data && data.profile && typeof data.profile === "object") ? data.profile : data;
+    if(!p || typeof p !== "object" || Array.isArray(p) || !Array.isArray(p.assets)) throw new Error("bad format");
+    p.assets = Array.isArray(p.assets) ? p.assets : [];
+    p.skillGaps = Array.isArray(p.skillGaps) ? p.skillGaps : [];
+    p.vetoes = Array.isArray(p.vetoes) ? p.vetoes : [];
+    p.maxMonths = parseInt(p.maxMonths, 10) || 6;
+    if(!Array.isArray(p.weights) || p.weights.length !== 6) delete p.weights;
+    enterProfile(p);
+    msg(msgId, "✓ 画像导入成功，已进入");
+  }catch(e){
+    msg(msgId, "⚠️ 内容不是有效的画像JSON（需包含 assets 数组）");
+  }
+}
+
+/* ---------- 画像概览 + 高级编辑 ---------- */
+function renderOverview(){
+  if(!PROFILE){ return; }
+  const p = PROFILE;
+  const assetChips = (p.assets||[]).map(a=>'<span class="chip">'+esc(a.label)+'</span>').join("") || '<span class="chip">（暂无，去高级编辑添加）</span>';
+  const gapChips = (p.skillGaps||[]).map(g=>'<span class="chip miss">'+esc(g.label)+'</span>').join("") || '<span class="chip">无</span>';
+  // 红线展示：每个有关键词的分类
+  const vetoChips = (p.vetoes||[]).filter(v=>v.keywords).map(v=>
+    '<span class="chip warn">🚫 '+esc(v.label)+'：'+esc(v.keywords.slice(0,30))+'</span>'
+  ).join("") || '<span class="chip">无（去编辑红线添加）</span>';
+  const wCustom = Array.isArray(p.weights) && p.weights.some(x=>parseFloat(x) !== 1);
+  document.getElementById("ovBox").innerHTML =
+    '<div class="ov-row"><b>姓名</b><span>'+(esc(p.name||"（未填）"))+'</span></div>'+
+    '<div class="ov-row"><b>基础信息</b><span>'+(esc(p.basics||"（未填）"))+'</span></div>'+
+    '<div class="ov-row"><b>求职意向</b><span>'+(esc(p.intent||"（未填）"))+'</span></div>'+
+    '<div class="ov-row"><b>能力资产</b><span>'+assetChips+'</span></div>'+
+    '<div class="ov-row"><b>短板</b><span>'+gapChips+'</span></div>'+
+    '<div class="ov-row"><b>否决红线</b><span>'+vetoChips+'</span></div>'+
+    '<div class="ov-row"><b>时长上限</b><span>'+(p.maxMonths||6)+'个月（超过自动否决）</span></div>'+
+    '<div class="ov-row"><b>评分权重</b><span>'+(wCustom ? '自定义（六维卡片中可调整/重置）' : '等权（默认，可在六维卡片中调整）')+'</span></div>'+
+    '<div class="ov-row"><b>数据存储</b><span>仅本机浏览器（localStorage），不上传任何服务器；换设备请用「导出画像」</span></div>';
+}
+function toggleProfile(){
+  const c = document.getElementById("profileCard");
+  c.classList.toggle("hidden");
+  if(!c.classList.contains("hidden")){
+    document.getElementById("profileEditor").value = JSON.stringify(PROFILE, null, 2);
+  }
+}
+function saveProfile(){
+  try{
+    const p = JSON.parse(document.getElementById("profileEditor").value);
+    saveProfileObj(p);
+    renderOverview();
+    renderVetoEditList();
+    msg("profileMsg", "✓ 已保存");
+  }catch(e){ msg("profileMsg", "⚠️ JSON格式错误，请检查"); }
+}
+
+/* ---------- 红线编辑面板 ---------- */
+function toggleVetoEditor(){
+  const c = document.getElementById("vetoCard");
+  c.classList.toggle("hidden");
+  if(!c.classList.contains("hidden")){
+    renderVetoEditList();
+  }
+}
+function renderVetoEditList(){
+  renderVetoGuides("vetoEditList", PROFILE ? PROFILE.vetoes : []);
+}
+function saveVetoes(){
+  const vetoes = buildVetoesFromInput("vetoEditList");
+  PROFILE.vetoes = vetoes;
+  saveProfileObj(PROFILE);
+  renderOverview();
+  msg("vetoSaveMsg", "✓ 红线已保存");
+}
+
+/* ============ 演示JD（通用公开内容，不含个人信息） ============ */
+const DEMOS = {
+  kimi: {title:"增长团队管培生", company:"Kimi / 月之暗面", text:
+`岗位定位：参与 Kimi 增长团队的重点项目，在产品、品牌、内容、用户、合作等方向中寻找高价值问题，并推动项目从分析走向落地。
+【你会参与的工作】研究 Kimi 用户、市场环境、竞品动态和技术趋势，形成有判断的分析与项目建议；参与增长项目和品牌级 Campaign，从问题定义、用户洞察、创意策划推进到执行和复盘；寻找产品与增长之间的机会，制作原型、搭建 AI Skill、开发简单工具或验证新的使用场景；参与用户运营、社区建设、线下活动和跨界合作；建立项目指标，跟踪效果，整理关键经验并形成可以复用的方法。
+【希望】本科或研究生在读，能稳定投入至少 3 个月；至少有一项由自己主动发起并完成的项目；逻辑清楚，能把模糊问题拆解成可执行步骤；对 AI 有真实使用经验，能够熟练运用 AI 完成研究、创作、原型或自动化工作；具备基本英文工作能力。
+【加分项】有创业、独立产品、开源项目经历；有科技、消费、内容平台等行业的实习经验；能使用代码、设计、数据分析或自动化工具快速制作验证版本。`},
+  seo: {title:"SEO & GEO 增长实习生（AI方向）", company:"", text:
+`【你将负责什么】关键词与意图洞察：利用工具挖掘全球市场高潜关键词，分析AI时代用户搜索意图的变化；内容运营：管理外籍写手/供应商或利用AI工具，产出既符合SEO逻辑又能打动用户的深度内容；GEO专项探索：协助落地GEO，追踪产品在主流AI搜索引擎中的表现；外链建设：进行高质量外链建设，提升站点权重和页面排名；数据驱动决策：协助监控网站排名波动，拆解竞品增长策略。
+【我们希望你】英语六级以上，能流畅阅读英语内容并审核英文地道表达；AI agent工具重度使用者；内容品位好；加分项：有SEO相关学习或实践者；了解基础的HTML或Python。`}
+};
+function loadDemo(k){
+  const d = DEMOS[k];
+  document.getElementById("jdTitle").value = d.title;
+  document.getElementById("jdCompany").value = d.company;
+  document.getElementById("jdText").value = d.text;
+  analyze();
+}
+
+/* ============ 分析引擎 ============ */
+function analyze(){
+  const title = document.getElementById("jdTitle").value.trim();
+  const company = document.getElementById("jdCompany").value.trim();
+  const text = document.getElementById("jdText").value.trim();
+  if(!text){ alert("请先粘贴JD全文"); return; }
+  const full = (title + "\n" + company + "\n" + text);
+
+  // 确保PROFILE有vetoes
+  if(!PROFILE.vetoes) PROFILE.vetoes = [];
+
+  // 1. 否决检查（从画像vetoes读取用户填的关键词）
+  const vetoResults = [];
+  PROFILE.vetoes.forEach(v => {
+    if(!v.keywords || !v.keywords.trim()) return; // 空的跳过
+    const kws = v.keywords.split(/[，,、;\n]/).map(s=>s.trim()).filter(Boolean);
+    if(!kws.length) return;
+    // 转义每个关键词并构建正则
+    const pattern = kws.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    try{
+      const re = new RegExp(pattern, "i");
+      const m = full.match(re);
+      vetoResults.push({
+        name: v.label,
+        mode: v.mode,
+        hint: v.hint || "",
+        hit: !!m,
+        snippet: m ? m[0] : ""
+      });
+    }catch(e){
+      vetoResults.push({
+        name: v.label,
+        mode: v.mode,
+        hint: v.hint || "",
+        hit: false,
+        snippet: "（正则无效）"
+      });
+    }
+  });
+
+  // 时长否决（独立自动检查，用profile.maxMonths）
+  const maxM = PROFILE.maxMonths || 6;
+  const durMatch = full.match(/(\d+)\s*个月|不少于\s*(\d+)\s*个月|至少\s*(\d+)\s*个月|(\d+)\s*月以上/i);
+  if(durMatch){
+    const num = parseInt(durMatch[1]||durMatch[2]||durMatch[3]||durMatch[4], 10);
+    if(num > maxM){
+      vetoResults.push({
+        name: "实习时长超出范围",
+        mode: "veto",
+        hint: "JD要求的实习时长超过你设定的上限",
+        hit: true,
+        snippet: "要求"+num+"个月 > 你的上限"+maxM+"个月"
+      });
+    }
+  }
+  if(/(12个月|一年以上|不少于\s*(7|8|9|10|11|12)\s*个月)/.test(full)){
+    vetoResults.push({
+      name: "实习时长超出范围",
+      mode: "veto",
+      hint: "JD要求的实习时长超过你设定的上限",
+      hit: true,
+      snippet: "时长要求超过"+maxM+"个月"
+    });
+  }
+
+  const hasVeto = vetoResults.some(v=>v.hit && v.mode === "veto");
+  const hasWarn = vetoResults.some(v=>v.hit && v.mode === "warn");
+
+  // 2. 六维
+  const dims = [];
+
+  // ① 岗位性质（用户/策略/运营分析=与分析岗同为2分）
+  let d1 = {name:"岗位性质", note:"2=分析岗或用户/策略运营核心岗 · 1=含增长/策略要素或未识别细分 · 0.5=纯执行运营（社群/内容/活动/客服/销售）"};
+  if(/(商业分析|战略分析|行业研究|经营分析|商业洞察|投资分析|市场研究)/.test(full)){
+    d1.score = 2; d1.ev = ["命中分析岗关键词：" + (full.match(/(商业分析|战略分析|行业研究|经营分析|商业洞察|投资分析|市场研究)/)||[""])[0]];
+  } else if(/(用户运营|策略运营|运营分析|用户增长|增长运营|运营策略|用户分层|精细化运营)/.test(full)){
+    d1.score = 2; d1.ev = ["命中运营核心岗关键词：" + (full.match(/(用户运营|策略运营|运营分析|用户增长|增长运营|运营策略|用户分层|精细化运营)/)||[""])[0]];
+  } else if(/(数据分析|用户研究|用研|市场分析)/.test(full)){
+    d1.score = 1.5; d1.ev = ["偏数据分析/用研——半分析半执行"];
+  } else if(/(增长|策略|投放|转化)/.test(full)){
+    d1.score = 1.5; d1.ev = ["含增长/策略/转化要素"];
+  } else if(/(内容运营|社群|活动执行|客服|销售|电销|外呼|运营专员)/.test(full)){
+    d1.score = 0.5; d1.ev = ["纯执行运营（内容/社群/活动/客服/销售）——偏执行，成长性有限"];
+  } else if(/(运营)/.test(full)){
+    d1.score = 1; d1.ev = ["含'运营'但未识别细分类型，需人工判断"];
+  } else {
+    d1.score = 1; d1.ev = ["岗位性质需人工判断（未识别到典型关键词）"];
+  }
+  dims.push(d1);
+
+  // ② 经历命中度
+  const hits = [], misses = [];
+  (PROFILE.assets||[]).forEach(a=>{
+    const re = new RegExp(a.pattern, "i");
+    (re.test(full) ? hits : misses).push(a);
+  });
+  let d2score = hits.length >= 4 ? 2 : (hits.length >= 2 ? 1 : 0);
+  dims.push({name:"经历命中度", score:d2score,
+    note:"画像资产关键词在JD中的命中数（命中"+hits.length+"项）",
+    ev:[], hits, misses});
+
+  // ③ 技能门槛
+  let d3score = 2, d3ev = ["无硬性技能门槛"];
+  (PROFILE.skillGaps||[]).forEach(g=>{
+    const re = new RegExp(g.pattern, "i");
+    if(re.test(full)){
+      if(/(精通|熟练|扎实|必须|require|strong)/i.test(full)){
+        d3score = Math.min(d3score, 0.5);
+        d3ev = ["⚠️ 硬性要求：" + g.label + "（你的水平：" + (g.level||"短板") + "）"];
+      } else {
+        d3score = Math.min(d3score, 1.5);
+        d3ev = ["提及 " + g.label + " 但非硬性要求（你的水平：" + (g.level||"短板") + "）"];
+      }
+    }
+  });
+  dims.push({name:"技能门槛匹配", score:d3score, note:"2=无门槛/加分项 · 1=要求在学技能 · 0.5=硬性要求短板技能", ev:d3ev});
+
+  // ④ 判断层暴露度
+  let d4 = 0, d4ev = [];
+  const d4pos = /(问题定义|策略|洞察|复盘|决策|独立负责|从0到1|从零到一|主导|判断|建议)/g, d4neg = /(协助|支持|配合|跟进|执行为主)/g;
+  const posN = (full.match(d4pos)||[]).length, negN = (full.match(d4neg)||[]).length;
+  if(posN >= 4) d4 = 2; else if(posN >= 2) d4 = 1.5; else if(posN >= 1) d4 = 1; else d4 = 0.5;
+  if(negN > posN) d4 = Math.max(0.5, d4 - 0.5);
+  d4ev.push("判断层信号词 "+posN+" 个（问题定义/洞察/复盘/决策…），执行层信号词 "+negN+" 个");
+  dims.push({name:"判断层暴露度", score:d4, note:"2=直接参与分析与决策 · 1=可旁观 · 0.5=纯执行", ev:d4ev});
+
+  // ⑤ 成长价值
+  let d5score = 0.5, d5ev = ["公司背景未知或光环弱"];
+  if(company && STRONG_BRANDS.test(company)){ d5score = 2; d5ev = ["头部公司背书：" + company]; }
+  else if(STRONG_BRANDS.test(full)){ d5score = 1.5; d5ev = ["JD中识别到知名业务/品牌"]; }
+  else if(company){ d5score = 1; d5ev = ["公司已知，非头部——需自行查证业务与团队"]; }
+  dims.push({name:"成长/背书价值", score:d5score, note:"2=头部公司核心方向 · 1=有背书 · 0.5=弱背书", ev:d5ev});
+
+  // ⑥ 转正/长期价值
+  let d6score = 0.5, d6ev = ["未提及转正/留用"];
+  if(/(转正|留用|return offer|管培)/.test(full)){ d6score = 2; d6ev = ["明确转正/留用/管培信号"]; }
+  else if(/(长期|深度培养|headcount|HC)/.test(full)){ d6score = 1; d6ev = ["有长期培养暗示"]; }
+  dims.push({name:"转正/长期价值", score:d6score, note:"2=明确转正 · 1=有暗示 · 0.5=无", ev:d6ev});
+
+  lastAnalysis = {title, company, dims, vetoResults, hasVeto, hasWarn, raw:text};
+  render(title, company);
+  saveToHistory(title, company);
+}
+
+/* ---------- 维度权重（v0.5：每个维度 0-2，总分按权重归一到 /12） ---------- */
+function getWeights(){
+  let w = (PROFILE && Array.isArray(PROFILE.weights)) ? PROFILE.weights.slice(0,6) : [];
+  while(w.length < 6) w.push(1);
+  return w.map(x=>{ x=parseFloat(x); return (isNaN(x) || x < 0) ? 1 : x; });
+}
+function saveWeights(w){
+  if(!PROFILE) return;
+  PROFILE.weights = w.slice(0,6);
+  saveProfileObj(PROFILE);
+}
+function adjustWeight(i, v){
+  const w = getWeights();
+  w[i] = parseFloat(v);
+  saveWeights(w);
+  const lab = document.getElementById("dw"+i);
+  if(lab) lab.textContent = parseFloat(v).toFixed(1);
+  refreshTotal();
+}
+function resetWeights(){
+  saveWeights([1,1,1,1,1,1]);
+  for(let i=0;i<6;i++){
+    const s = document.getElementById("ww"+i);
+    if(s) s.value = "1";
+    const lab = document.getElementById("dw"+i);
+    if(lab) lab.textContent = "1.0";
+  }
+  refreshTotal();
+}
+function refreshTotal(){
+  if(!lastAnalysis) return;
+  const total = computeTotal();
+  const tEl = document.getElementById("totalScore");
+  if(tEl) tEl.textContent = total.toFixed(1);
+  const b = band(total, lastAnalysis.hasVeto);
+  const vb = document.querySelector("#verdictBox .verdict");
+  if(vb){
+    vb.className = "verdict "+b.cls;
+    vb.querySelector(".big").innerHTML = b.emoji+" "+b.label+'<span class="score">'+total.toFixed(1)+' / 12</span>';
+  }
+}
+
+function computeTotal(){
+  const w = getWeights();
+  let s = 0, mx = 0;
+  (lastAnalysis.dims||[]).forEach((d,i)=>{
+    const wi = (i < w.length && typeof w[i] === "number") ? w[i] : 1;
+    s += d.score * wi;
+    mx += 2 * wi;
+  });
+  return mx > 0 ? s/mx*12 : 0;
+}
+function band(total, hasVeto){
+  if(hasVeto) return {cls:"red", emoji:"🔴", label:"不投（命中一票否决）"};
+  if(total >= 8) return {cls:"green", emoji:"🟢", label:"投！优先处理"};
+  if(total >= 6) return {cls:"amber", emoji:"🟡", label:"值得投"};
+  if(total >= 4) return {cls:"amber", emoji:"🟠", label:"谨慎/备选"};
+  return {cls:"red", emoji:"🔴", label:"不投"};
+}
+
+/* 简历建议：完全由画像驱动 */
+function resumeAdvice(){
+  const t = lastAnalysis.raw + (lastAnalysis.title||"") + (lastAnalysis.company||"");
+  const hit = (PROFILE.assets||[]).filter(a=> new RegExp(a.pattern,"i").test(t));
+  if(!hit.length){
+    return {resume:"通用简历（命中信号弱，按公司类型自选方向）", story:"从你最硬的一段经历讲起", hitLabels:[]};
+  }
+  return {
+    resume:"选择最贴近命中领域的简历（命中：" + hit.map(h=>h.label).join("、") + "）",
+    story: hit[0].label + " —— " + hit[0].story,
+    hitLabels: hit.map(h=>h.label)
+  };
+}
+
+function render(title, company){
+  document.getElementById("result").classList.remove("hidden");
+  const w = getWeights();
+  const total = computeTotal();
+  const b = band(total, lastAnalysis.hasVeto);
+  const vetoHit = lastAnalysis.vetoResults.filter(v=>v.hit);
+  const reason = lastAnalysis.hasVeto
+    ? "命中否决项：" + vetoHit.map(v=>v.name).join("；")
+    : "六维总分 " + total.toFixed(1) + "/12" +
+      (lastAnalysis.dims[1].score===2 ? " · 经历命中度打满，你的牌能直接用上" :
+       (lastAnalysis.dims[1].score<=1 ? " · 经历命中度低——王牌经历接不住" : ""));
+  document.getElementById("verdictBox").innerHTML =
+    '<div class="verdict '+b.cls+'"><div class="big">'+b.emoji+' '+b.label+
+    '<span class="score">'+total.toFixed(1)+' / 12</span></div>'+
+    '<div class="reason">'+esc(title||"未命名岗位")+(company?" · "+esc(company):"")+' —— '+esc(reason)+'</div></div>';
+
+  document.getElementById("vetoBox").innerHTML = lastAnalysis.vetoResults.map(v=>{
+    if(v.hit) return '<div class="veto-item '+(v.mode==="veto"?"v":"w")+'">'+(v.mode==="veto"?"🚫":"⚠️")+' <b>'+esc(v.name)+'</b>（命中：'+esc(v.snippet)+'）<div style="font-size:12.5px;margin-top:4px;">'+esc(v.hint||"")+'</div></div>';
+    return '<div class="veto-item pass">✅ '+esc(v.name)+' —— 通过</div>';
+  }).join("") || '<div class="veto-item pass">未设置任何红线关键词（去画像里填写你的否决条件）</div>';
+
+  document.getElementById("dimsBox").innerHTML = lastAnalysis.dims.map((d,i)=>{
+    let evHtml = "";
+    if(d.hits){
+      evHtml = '<div class="ev">命中的资产：'+(d.hits.map(h=>'<span class="chip hit">'+esc(h.label)+'</span>').join("")||"无")+'</div>'+
+               '<details style="margin-top:6px;"><summary>未命中的资产（'+d.misses.length+'项）</summary><div style="margin-top:6px;">'+
+               d.misses.map(h=>'<span class="chip">'+esc(h.label)+'</span>').join("")+'</div></details>';
+    } else {
+      evHtml = '<div class="ev">'+d.ev.map(e=>'<span class="chip '+(e.startsWith("⚠️")?"miss":"hit")+'">'+esc(e)+'</span>').join("")+'</div>';
+    }
+    return '<div class="dim"><div class="dim-top"><span class="dim-name">'+String(i+1)+'⃣ '+esc(d.name)+'</span>'+
+      '<span class="dim-score" id="ds'+i+'">'+d.score.toFixed(1)+'</span></div>'+
+      evHtml+
+      '<div class="slider-row"><span style="font-size:12px;color:var(--sub);flex:0 0 34px;">评分</span><input type="range" min="0" max="2" step="0.5" value="'+d.score+'" oninput="adjustDim('+i+', this.value)"><span class="val" id="dv'+i+'">'+d.score.toFixed(1)+'</span></div>'+
+      '<div class="slider-row" style="margin-top:4px;"><span style="font-size:12px;color:var(--sub);flex:0 0 34px;">权重</span><input type="range" min="0" max="2" step="0.5" value="'+w[i]+'" id="ww'+i+'" oninput="adjustWeight('+i+', this.value)"><span class="val" id="dw'+i+'" style="font-size:12.5px;">'+w[i].toFixed(1)+'</span></div>'+
+      '<div class="dim-note">'+esc(d.note)+'</div></div>';
+  }).join("");
+  document.getElementById("totalScore").textContent = total.toFixed(1);
+
+  const ra = resumeAdvice();
+  const hitChips = ra.hitLabels.length ? ra.hitLabels.map(h=>'<span class="chip hit">'+esc(h)+'</span>').join("") : '<span class="chip">（无命中标签）</span>';
+  document.getElementById("adviceBox").innerHTML =
+    '<div class="advice-item"><b>简历选择</b><span>'+esc(ra.resume)+'</span></div>'+
+    '<div class="advice-item"><b>命中能力</b><span>'+hitChips+'</span></div>'+
+    '<div class="advice-item"><b>主讲故事</b><span>'+esc(ra.story)+'</span></div>'+
+    '<div class="advice-item"><b>预判追问</b><span>如实说明短板水平（如在学/缺失），重点用命中能力标签讲你做过的事。不要虚构经历。</span></div>'+
+    '<div class="advice-item"><b>动作</b><span>'+(total>=8?"今天投，花1小时按JD关键词微调简历":(total>=6?"本周投，作为投递组合的一部分":"除非投递池太空，否则不投"))+'</span></div>';
+}
+
+function adjustDim(i, val2){
+  lastAnalysis.dims[i].score = parseFloat(val2);
+  document.getElementById("ds"+i).textContent = parseFloat(val2).toFixed(1);
+  document.getElementById("dv"+i).textContent = parseFloat(val2).toFixed(1);
+  refreshTotal();
+}
+
+function copyReport(){
+  if(!lastAnalysis) return;
+  const total = computeTotal();
+  const b = band(total, lastAnalysis.hasVeto);
+  const ra = resumeAdvice();
+  const w = getWeights();
+  let md = "# JD评估报告\n\n**岗位**：" + (lastAnalysis.title||"未命名") + (lastAnalysis.company?"（"+lastAnalysis.company+"）":"") + "\n\n"+
+    "**结论**：" + b.emoji + " " + b.label + "（" + total.toFixed(1) + "/12）\n\n"+
+    "## 一票否决\n" + lastAnalysis.vetoResults.map(v=>(v.hit?(v.mode==="veto"?"🚫":"⚠️"):"✅")+" "+v.name+(v.hit?"（命中："+v.snippet+"）":"")).join("\n") + "\n\n"+
+    "## 六维评分\n" + lastAnalysis.dims.map((d,i)=>(i+1)+". "+d.name+"："+d.score.toFixed(1)+"/2"+(w[i]!==1?"（权重 "+w[i]+"）":"")).join("\n") + "\n\n"+
+    "## 建议\n- 简历："+ra.resume+"\n- 命中能力："+(ra.hitLabels.join("、")||"无")+"\n- 主讲故事："+ra.story+"\n\n"+
+    "—— JD适配判断器 · AI做执行，人做判断";
+  navigator.clipboard.writeText(md).then(()=>msg("copyMsg","✓ 已复制到剪贴板")).catch(()=>{
+    const ta=document.createElement("textarea"); ta.value=md; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); document.body.removeChild(ta); msg("copyMsg","✓ 已复制");
+  });
+}
+
+/* ============ 岗位检测历史 ============ */
+const HIST_STATUS = ["未投递","已投递","面试中","已结束","不投"];
+function saveToHistory(title, company){
+  if(!lastAnalysis) return;
+  const total = computeTotal();
+  const b = band(total, lastAnalysis.hasVeto);
+  const item = {
+    id: Date.now(),
+    date: nowStr(),
+    title: title || "未命名岗位",
+    company: company || "",
+    total: total,
+    verdictLabel: b.label,
+    verdictEmoji: b.emoji,
+    verdictCls: b.cls,
+    hasVeto: lastAnalysis.hasVeto,
+    status: "未投递",
+    note: "",
+    dims: lastAnalysis.dims.map(d=>({name:d.name, score:d.score, note:d.note})),
+    vetoResults: lastAnalysis.vetoResults,
+    jdSnippet: (lastAnalysis.raw||"").slice(0, 500)
+  };
+  let hist = loadHistory();
+  hist.unshift(item);
+  saveHistory(hist);
+  renderHistory();
+}
+
+function renderHistory(){
+  const hist = loadHistory();
+  const box = document.getElementById("historyBox");
+  const countEl = document.getElementById("histCount");
+  const actionsEl = document.getElementById("histActions");
+  if(!box) return;
+
+  if(countEl) countEl.textContent = hist.length ? "（"+hist.length+"条）" : "";
+  if(actionsEl) actionsEl.style.display = hist.length ? "flex" : "none";
+
+  if(!hist.length){
+    box.innerHTML = '<div style="font-size:13.5px;color:var(--sub);padding:12px 0;">暂无检测记录。贴入JD并分析后，结果会自动存档到这里。</div>';
+    return;
+  }
+
+  box.innerHTML = hist.map(h=>{
+    const titleLine = esc(h.title) + (h.company ? " · "+esc(h.company) : "");
+    const st = HIST_STATUS.indexOf(h.status) >= 0 ? h.status : "未投递";
+    const si = HIST_STATUS.indexOf(st);
+    const noteLine = h.note ? '<div class="hi-note">📝 '+esc(h.note)+'</div>' : "";
+    return '<div class="hist-item" onclick="viewHistory('+h.id+')">'+
+      '<div class="hi-left">'+
+        '<div class="hi-title">'+titleLine+'</div>'+
+        '<div class="hi-meta">'+esc(h.date)+' · <span class="hist-badge '+h.verdictCls+'">'+h.verdictEmoji+' '+esc(h.verdictLabel)+'</span> · '+h.total.toFixed(1)+'/12 · <span class="hi-status s'+si+'">'+esc(st)+'</span></div>'+
+        noteLine+
+        '<div class="hi-track" onclick="event.stopPropagation();">'+
+          '<select onchange="setHistStatus('+h.id+', this.value)" title="投递状态">'+HIST_STATUS.map(s=>'<option'+(s===st?' selected="selected"':'')+'>'+s+'</option>').join("")+'</select>'+
+          '<input type="text" value="'+escAttr(h.note||"")+'" placeholder="备注：可填日期/进展，如 2026-09-01 已投BOSS直聘" onchange="setHistNote('+h.id+', this.value)">'+
+        '</div>'+
+      '</div>'+
+      '<div class="hi-score" style="color:'+(h.verdictCls==="green"?"#0b6e40":(h.verdictCls==="red"?"#a5231b":"#8a5a00"))+'">'+h.total.toFixed(1)+'</div>'+
+      '<button class="hi-del" onclick="event.stopPropagation();deleteHistory('+h.id+')">✕</button>'+
+    '</div>';
+  }).join("");
+}
+
+function setHistStatus(id, v){
+  let hist = loadHistory();
+  const it = hist.find(h=>h.id===id);
+  if(!it) return;
+  it.status = HIST_STATUS.indexOf(v) >= 0 ? v : "未投递";
+  saveHistory(hist);
+  renderHistory();
+}
+function setHistNote(id, v){
+  let hist = loadHistory();
+  const it = hist.find(h=>h.id===id);
+  if(!it) return;
+  it.note = String(v||"").slice(0,200);
+  saveHistory(hist);
+}
+
+function viewHistory(id){
+  const hist = loadHistory();
+  const item = hist.find(h=>h.id===id);
+  if(!item) return;
+  document.getElementById("jdTitle").value = item.title;
+  document.getElementById("jdCompany").value = item.company;
+  document.getElementById("jdText").value = item.jdSnippet;
+  lastAnalysis = {
+    title: item.title,
+    company: item.company,
+    dims: item.dims,
+    vetoResults: item.vetoResults,
+    hasVeto: item.hasVeto,
+    hasWarn: false,
+    raw: item.jdSnippet
+  };
+  render(item.title, item.company);
+  document.getElementById("result").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function deleteHistory(id){
+  let hist = loadHistory();
+  hist = hist.filter(h=>h.id!==id);
+  saveHistory(hist);
+  renderHistory();
+}
+
+function clearHistory(){
+  if(!confirm("确定清空全部检测历史？此操作不可撤销。")) return;
+  saveHistory([]);
+  renderHistory();
+}
+
+/* ---------- 启动 ---------- */
+window.addEventListener("DOMContentLoaded", ()=>{
+  renderVetoGuides("vetoGuideList", PROFILE ? PROFILE.vetoes : []);
+  renderResumeList();
+  if(PROFILE){
+    document.getElementById("onboarding").classList.add("hidden");
+    document.getElementById("mainApp").classList.remove("hidden");
+    renderOverview();
+    renderVetoEditList();
+    renderHistory();
+  } else {
+    document.getElementById("onboarding").classList.remove("hidden");
+    document.getElementById("mainApp").classList.add("hidden");
+  }
+});
+</script>
+</body>
+</html>
