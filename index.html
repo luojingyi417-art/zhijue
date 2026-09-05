@@ -321,9 +321,19 @@
           <span id="copyMsg" class="copy-ok"></span>
         </div>
       </div>
+
+      <div class="card">
+        <h2><span class="num">4</span> AI 深度分析 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（可选 · DeepSeek，经 zhijue-backend 生成）</span></h2>
+        <div style="font-size:13px;color:var(--sub);margin-bottom:10px;">⚠️ 点击后会把<b>储备简历编辑区的简历全文 + 本页JD</b>发送到你自己的后端（workers.dev）并调用 DeepSeek；画像与历史记录不上传。本地规则引擎结果不受影响，AI结果仅作参考对照。</div>
+        <div class="actions">
+          <button class="btn btn-primary" id="aiBtn" onclick="aiAnalyze()">🤖 调用 AI 分析这份JD</button>
+          <span id="aiMsg" class="copy-ok"></span>
+        </div>
+        <div id="aiBox"></div>
+      </div>
     </div>
 
-    <div class="footer-note">JD适配判断器 v0.6 · 规则引擎原型 · 储备简历 + JD一键清空 + 投递状态跟踪 + 画像导入导出 + 权重可调 + 引导式红线 + 检测历史 · 你的画像与简历仅存于本地浏览器 · AI做执行，人做判断</div>
+    <div class="footer-note">JD适配判断器 v0.7 · 规则引擎 + 可选AI深度分析（DeepSeek） · 储备简历 + JD一键清空 + 投递状态跟踪 + 画像导入导出 + 权重可调 + 引导式红线 + 检测历史 · 画像与历史仅存本地浏览器；仅点击「AI分析」时上传简历与JD · AI做执行，人做判断</div>
   </div>
 </div>
 
@@ -338,6 +348,9 @@ const BLANK_PROFILE = {
   "vetoes": [],
   "intent": ""
 };
+
+/* ============ AI 深度分析后端（Cloudflare Worker → DeepSeek） ============ */
+const AI_BACKEND_URL = "https://zhijue-backend.luojingyi417.workers.dev";
 
 /* ============ 否决红线分类（引导式，用户自己填关键词） ============ */
 const VETO_CATEGORIES = [
@@ -942,6 +955,69 @@ function analyze(){
   lastAnalysis = {title, company, dims, vetoResults, hasVeto, hasWarn, raw:text};
   render(title, company);
   saveToHistory(title, company);
+}
+
+/* ---------- AI 深度分析（可选：上传简历+JD 至自建 Worker，调用 DeepSeek） ---------- */
+function currentResumeTextForAI(){
+  const t = val("resumeText");
+  if(t) return t;
+  if(currentResumeId){
+    const r = loadResumes().find(x=>String(x.id)===String(currentResumeId));
+    if(r && r.text) return r.text;
+  }
+  return "";
+}
+async function aiAnalyze(){
+  const box = document.getElementById("aiBox");
+  const btn = document.getElementById("aiBtn");
+  const jd = (lastAnalysis && lastAnalysis.raw) ? lastAnalysis.raw : val("jdText");
+  const resume = currentResumeTextForAI();
+  if(!jd){ alert("请先贴入JD并完成一次本地分析"); return; }
+  if(!resume){ alert("AI分析需要简历：请在「储备简历」区粘贴简历全文（或点选一份已保存的简历）"); return; }
+  if(btn) btn.disabled = true;
+  if(box) box.innerHTML = '<div style="padding:14px;color:var(--sub);font-size:13.5px;">⏳ DeepSeek 分析中，通常需要 10–30 秒，请不要关闭页面…</div>';
+  try{
+    const resp = await fetch(AI_BACKEND_URL + "/analyze", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({resume: resume, jd: jd})
+    });
+    const data = await resp.json().catch(()=>({}));
+    if(!resp.ok || !data.ok) throw new Error(data.error || ("HTTP " + resp.status));
+    if(box) box.innerHTML = buildAIReportHTML(data.report);
+  }catch(e){
+    if(box) box.innerHTML = '<div style="padding:12px 14px;border:1px solid #e5b1b1;background:#fdf0f0;border-radius:10px;color:#a33;font-size:13.5px;">❌ AI分析失败：'+esc(e.message||String(e))+'<br>可稍后重试，或直接使用上方本地规则引擎结果。</div>';
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+function buildAIReportHTML(r){
+  if(!r || typeof r !== "object") return "";
+  const verdictEmoji = /推荐/.test(r.verdict||"") ? "🟢" : /谨慎/.test(r.verdict||"") ? "🟡" : /不建议/.test(r.verdict||"") ? "🔴" : "⚪";
+  const dimRows = (r.dimensions||[]).map(d=>
+    '<tr>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap;"><b>'+esc(d.name||"")+'</b></td>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);text-align:center;"><b>'+esc(String(d.score??"—"))+'</b></td>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);color:var(--sub);">'+esc(d.comment||"")+'</td>'+
+    '</tr>').join("");
+  const listHTML = (arr) => (arr && arr.length)
+    ? '<ul style="margin:6px 0 0 18px;padding:0;font-size:13.5px;">'+arr.map(x=>'<li style="margin:3px 0;">'+esc(String(x))+'</li>').join("")+'</ul>'
+    : '<div style="color:var(--sub);font-size:13px;">—</div>';
+  const section = (icon, title, body) =>
+    '<div style="margin-top:14px;"><div style="font-size:13.5px;font-weight:600;">'+icon+' '+title+'</div>'+body+'</div>';
+  return ''+
+    '<div style="border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfcfe;">'+
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+      '<span style="font-size:18px;font-weight:700;">'+verdictEmoji+' '+esc(r.verdict||"未知")+'</span>'+
+      (r.overallScore != null ? '<span style="font-size:14px;color:var(--sub);">综合分 <b style="color:var(--ink);">'+esc(String(r.overallScore))+'</b>/100</span>' : '')+
+    '</div>'+
+    (r.summary ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.6;">'+esc(r.summary)+'</div>' : '')+
+    (dimRows ? '<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px;"><thead><tr style="text-align:left;color:var(--sub);font-size:12.5px;"><th style="padding:4px 10px;border-bottom:1px solid var(--line);">维度</th><th style="padding:4px 10px;border-bottom:1px solid var(--line);text-align:center;">分</th><th style="padding:4px 10px;border-bottom:1px solid var(--line);">点评</th></tr></thead><tbody>'+dimRows+'</tbody></table>' : '')+
+    section("💪", "优势", listHTML(r.strengths))+
+    section("⚠️", "差距", listHTML(r.gaps))+
+    section("✍️", "简历修改建议", listHTML(r.resumeSuggestions))+
+    '<div style="margin-top:12px;font-size:12px;color:var(--sub);border-top:1px dashed var(--line);padding-top:10px;">以上由 DeepSeek 生成，仅作参考——最终投递判断以你的红线和六维评分为准（AI做执行，人做判断）。</div>'+
+    '</div>';
 }
 
 /* ---------- 维度权重（v0.5：每个维度 0-2，总分按权重归一到 /12） ---------- */

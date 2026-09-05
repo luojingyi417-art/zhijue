@@ -6,7 +6,7 @@ let code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // strip DOMContentLoaded listener to avoid runtime DOM dependency
 code = code.replace(/window\.addEventListener[\s\S]*$/, "");
 // expose const declarations to sandbox global
-code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;}catch(e){}";
+code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;}catch(e){}";
 
 // fake DOM + localStorage
 const store = {};
@@ -309,7 +309,7 @@ assert("escAttr escapes single quotes", escAttr("a'b").indexOf("&#39;") >= 0);
 
 console.log("=== Test 13: version + privacy ===");
 const code3 = fs.readFileSync("index.html", "utf8");
-assert("footer shows v0.6", code3.includes("JD适配判断器 v0.6"));
+assert("footer shows v0.7", code3.includes("JD适配判断器 v0.7"));
 assert("resume card present", code3.includes("id=\"resumeCard\""));
 assert("clear button present", code3.includes("clearJDInputs"));
 assert("status select present", code3.includes("setHistStatus"));
@@ -317,6 +317,46 @@ assert("note input present", code3.includes("setHistNote"));
 assert("no 罗景怡 (privacy)", !code3.includes("罗景怡"));
 assert("no HCR (privacy)", !code3.includes("HCR"));
 assert("no 中央财经 (privacy)", !code3.includes("中央财经"));
+
+console.log("=== Test 14: AI 深度分析模块 ===");
+const AI_BACKEND_URL = exportFn("AI_BACKEND_URL");
+const buildAIReportHTML = exportFn("buildAIReportHTML");
+const currentResumeTextForAI = exportFn("currentResumeTextForAI");
+assert("AI_BACKEND_URL points to worker", AI_BACKEND_URL === "https://zhijue-backend.luojingyi417.workers.dev");
+assert("aiAnalyze function exists", typeof exportFn("aiAnalyze") === "function");
+assert("aiBox rendered in HTML", code3.includes('id="aiBox"'));
+assert("AI card has privacy notice", code3.includes("发送到你自己的后端"));
+// currentResumeTextForAI: prefers editor content, falls back to saved resume
+setVal("resumeText", "编辑区简历内容");
+assert("currentResumeTextForAI prefers editor", currentResumeTextForAI() === "编辑区简历内容");
+setVal("resumeText", "");
+sandbox.currentResumeId = null;
+assert("currentResumeTextForAI empty when nothing saved", currentResumeTextForAI() === "");
+// buildAIReportHTML renders report structure
+const sampleReport = {
+  verdict: "推荐投递", overallScore: 78,
+  dimensions: [{name: "技能匹配", score: 8, comment: "Excel对口"}],
+  strengths: ["数据分析扎实"], gaps: ["SQL需加强"], resumeSuggestions: ["补充用户分层关键词"],
+  summary: "整体匹配度较高。"
+};
+const reportHTML = buildAIReportHTML(sampleReport);
+assert("report renders verdict", reportHTML.includes("推荐投递"));
+assert("report renders score", reportHTML.includes("78"));
+assert("report renders dimension row", reportHTML.includes("技能匹配") && reportHTML.includes("Excel对口"));
+assert("report renders strengths", reportHTML.includes("数据分析扎实"));
+assert("report renders gaps", reportHTML.includes("SQL需加强"));
+assert("report renders suggestions", reportHTML.includes("补充用户分层关键词"));
+assert("report has human-judgment disclaimer", reportHTML.includes("AI做执行，人做判断"));
+// XSS safety: report content is escaped
+const xssReport = {verdict: '<img src=x onerror=alert(1)>', dimensions: [], strengths: ["<script>bad()</script>"], gaps: [], resumeSuggestions: [], summary: ""};
+const xssHTML = buildAIReportHTML(xssReport);
+assert("XSS: script content escaped", !xssHTML.includes("<script>bad"));
+assert("XSS: img tag not executable", !xssHTML.includes("<img") && xssHTML.includes("&lt;img"));
+// edge cases
+assert("null report returns empty", buildAIReportHTML(null) === "");
+assert("empty arrays render dash", buildAIReportHTML({verdict: "谨慎投递", dimensions: [], strengths: [], gaps: [], resumeSuggestions: []}).includes("—"));
+assert("verdict emoji: 推荐=green", buildAIReportHTML(sampleReport).includes("🟢"));
+assert("verdict emoji: 不建议=red", buildAIReportHTML({...sampleReport, verdict: "不建议投递"}).includes("🔴"));
 
 console.log("\n=== Results: " + pass + " passed, " + fail + " failed ===");
 if (fail > 0) process.exit(1);
