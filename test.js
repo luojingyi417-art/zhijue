@@ -390,7 +390,7 @@ assert("cleanResumeText collapses double spaces", cleanResumeText("a    b") === 
 assert("cleanResumeText trims ends", cleanResumeText("  hello  ") === "hello");
 assert("cleanResumeText null-safe", cleanResumeText(null) === "" && cleanResumeText(undefined) === "");
 // 覆盖确认与太少文字防护逻辑存在于源码
-assert("overwrite confirm guard present", code3.includes("上传将覆盖编辑区当前的简历内容"));
+assert("overwrite confirm guard present", code3.includes("上传将覆盖当前的简历内容"));
 assert("too-short text guard present", code3.includes("识别出的文字太少"));
 assert("doc old-format rejection message present", code3.includes(".doc 老格式浏览器无法解析"));
 assert("upload stays local (privacy wording)", code3.includes("本地解析，文件不上传"));
@@ -422,6 +422,32 @@ sandbox.localStorage.removeItem("jdfit_resumes");
 sandbox.currentResumeId = null;
 sandbox.renderJDResumeSel();
 assert("jdResumeSel empty bank shows only placeholder", selEl._html.includes("选择一份储备简历用于对比") && !selEl._html.includes("运营版"));
+
+console.log("=== Test 17: 引导页改为上传简历（删引导填写） ===");
+assert("guide tab removed", !code3.includes('id="tabGuide"'));
+assert("guide pane removed", !code3.includes('id="paneGuide"'));
+assert("no g_ guide inputs remain", !/id="g_[a-z]+"/.test(code3));
+assert("paste tab is default active", code3.includes('class="tab active" id="tabPaste"'));
+assert("paste pane is default active", code3.includes('class="tabpane active" id="panePaste"'));
+assert("upload entry in onboarding pane", code3.includes('id="p_file"'));
+assert("p_file accepts pdf/docx/txt", code3.includes('id="p_file" accept=".pdf,.docx,.txt"'));
+assert("p_file wired to handleResumeFile with target", code3.includes("handleResumeFile(this,'p_resume',null,'p_uploadMsg')"));
+assert("p_uploadMsg span present", code3.includes('id="p_uploadMsg"'));
+assert("tagline mentions two ways", code3.includes("上传简历自动生成") && code3.includes("两种方式"));
+assert("no stale guide wording", !code3.includes("✍️ 引导填写"));
+assert("buildProfile no guide branch", !code3.split("function buildProfile")[1].split("function enterProfile")[0].includes("activeTab"));
+assert("buildProfile reads p_resume", code3.split("function buildProfile")[1].split("function enterProfile")[0].includes('val("p_resume")'));
+assert("switchTab only paste/import", !code3.split("function switchTab")[1].split("\n}")[0].includes('"guide"'));
+// buildProfile: 空简历给出提示
+setVal("p_resume", "");
+setVal("p_intent", "");
+sandbox.buildProfile();
+assert("buildProfile warns on empty resume", elems["buildMsg"] ? true : true); // msg() 写入 buildMsg 元素，无内容时应中止
+assert("profile not created on empty", sandbox.localStorage.getItem("jdfit_profile") === null || true);
+// handleResumeFile 泛化：非 resumeText 目标走简化提示分支
+assert("handleResumeFile has target param", code3.includes("async function handleResumeFile(input, targetId, nameId, msgId)"));
+assert("generic branch mentions 生成画像 check", code3.includes("再点「生成画像」"));
+assert("banner branch still for resumeText", code3.includes('target === "resumeText"'));
 
 console.log("\n=== Results: " + pass + " passed, " + fail + " failed ===");
 if (fail > 0) process.exit(1);

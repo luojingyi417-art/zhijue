@@ -123,58 +123,30 @@
   <div id="onboarding" class="card">
     <span class="privacy-badge">🔒 本地运行 · 你的信息只存在自己浏览器，不会上传</span>
     <h1 style="margin-bottom:6px;"><span class="logo">◉</span> 先设计你的个人画像</h1>
-    <p class="tagline" style="margin-bottom:16px;">这个工具靠"你的经历资产"去匹配 JD。请先告诉我们你是谁、有什么牌——三种方式任选：<b>引导填写</b> / <b>贴简历自动生成</b> / <b>导入已有画像</b>。填完信息只存在你本地浏览器（换设备用「导出画像」迁移）。</p>
+    <p class="tagline" style="margin-bottom:16px;">这个工具靠"你的经历资产"去匹配 JD。请先告诉我们你是谁、有什么牌——两种方式任选：<b>上传简历自动生成</b> / <b>导入已有画像</b>。填完信息只存在你本地浏览器（换设备用「导出画像」迁移）。</p>
 
     <div class="tabs">
-      <div class="tab active" id="tabGuide" onclick="switchTab('guide')">✍️ 引导填写</div>
-      <div class="tab" id="tabPaste" onclick="switchTab('paste')">📋 粘贴简历自动生成</div>
+      <div class="tab active" id="tabPaste" onclick="switchTab('paste')">📤 上传简历自动生成</div>
       <div class="tab" id="tabImport" onclick="switchTab('import')">📥 导入已有画像</div>
     </div>
 
-    <!-- 引导填写 -->
-    <div class="tabpane active" id="paneGuide">
+    <!-- 上传/粘贴简历 -->
+    <div class="tabpane active" id="panePaste">
       <div class="card" style="box-shadow:none; background:#fbfcfe;">
-        <div class="row">
-          <div><label>姓名（选填）</label><input type="text" id="g_name" placeholder="例：张三"></div>
-          <div><label>学校</label><input type="text" id="g_school" placeholder="例：某大学"></div>
-          <div><label>专业 / 年级</label><input type="text" id="g_major" placeholder="例：金融学 研二"></div>
+        <label>上传简历文件（PDF / Word / TXT，本地解析不上传）或直接粘贴全文</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <button class="btn btn-ghost" onclick="document.getElementById('p_file').click()">📤 上传简历文件</button>
+          <input type="file" id="p_file" accept=".pdf,.docx,.txt" style="display:none" onchange="handleResumeFile(this,'p_resume',null,'p_uploadMsg')">
+          <span id="p_uploadMsg" style="font-size:12.5px;color:var(--sub);"></span>
         </div>
-        <div class="row" style="margin-top:12px;">
-          <div><label>可到岗时间</label><input type="text" id="g_avail" placeholder="例：随时到岗"></div>
-          <div><label>每周天数</label><input type="text" id="g_days" placeholder="例：5天"></div>
-          <div><label>可实习月数（上限）</label><input type="text" id="g_months" placeholder="例：6"></div>
-        </div>
-        <div style="margin-top:12px;">
-          <label>实习 / 项目经历（每段写清 公司·角色·做了什么，可写多段）</label>
-          <textarea id="g_exp" placeholder="例：
-某快消公司 · 市场部实习生（2025.6-9）
-参与新品校园推广，用Excel搭建投放效果跟踪表，复盘各渠道转化数据并输出建议。
-某互联网公司 · 用户增长实习生（2026.1-5）
-策划A/B测试落地页文案，分析各渠道转化漏斗，输出周报与投放优化建议。"></textarea>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <div><label>已掌握的技能（选填）</label><input type="text" id="g_skills" placeholder="例：Excel、SQL、PPT"></div>
-          <div><label>短板 / 在学的技能（选填）</label><input type="text" id="g_gaps" placeholder="例：Python（在学）；其他暂无"></div>
-        </div>
-        <div style="margin-top:12px;">
-          <label>求职意向与方向优先级（选填）</label>
-          <textarea id="g_intent" style="min-height:80px;" placeholder="例：主攻用户运营，商业分析并行；不投纯电销与客服岗"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- 粘贴简历 -->
-    <div class="tabpane" id="panePaste">
-      <div class="card" style="box-shadow:none; background:#fbfcfe;">
-        <label>把你的简历全文粘贴到这里</label>
-        <textarea id="p_resume" placeholder="粘贴简历全文…系统会自动识别你的姓名、学校，并从经历里抽取可匹配的能力标签（咨询 / 行业研究 / 竞品 / 用户调研 / 数据分析 / AI工具 / 互联网 / 垂直行业 / 方法论沉淀 等）"></textarea>
+        <textarea id="p_resume" placeholder="上传后自动识别填入（识别结果可能有错漏，请通读检查修正），或直接粘贴简历全文…系统会自动识别你的姓名、学校，并从经历里抽取可匹配的能力标签（咨询 / 行业研究 / 竞品 / 用户调研 / 数据分析 / AI工具 / 互联网 / 垂直行业 / 方法论沉淀 等）"></textarea>
         <label style="margin-top:14px;">或从「储备简历」直接导入（可选）</label>
         <select id="pasteFromBank" onchange="fillPasteFromBank(this.value)"><option value="">— 选择一份已保存的简历 —</option></select>
         <div style="margin-top:12px;">
           <label>求职意向与方向优先级（选填）</label>
           <textarea id="p_intent" style="min-height:70px;" placeholder="例：主攻用户运营，商业分析并行"></textarea>
         </div>
-        <p class="hint">自动生成是<b>启发式抽取</b>（从文本里识别关键词并生成标签+例句），不是魔法——生成后你可以在下一步「高级编辑」里增删改任何一条。</p>
+        <p class="hint">自动生成是<b>启发式抽取</b>（从文本里识别关键词并生成标签+例句），不是魔法——上传/粘贴后请检查识别结果，生成后可在下一步「高级编辑」里增删改任何一条。</p>
       </div>
     </div>
 
@@ -496,11 +468,13 @@ async function extractDocxText(file){
   const res = await window.mammoth.extractRawText({ arrayBuffer: buf });
   return res && res.value ? res.value : "";
 }
-function setUploadMsg(text){ const m = document.getElementById("uploadMsg"); if(m) m.textContent = text || ""; }
-async function handleResumeFile(input){
+function setUploadMsg(text, msgId){ const m = document.getElementById(msgId || "uploadMsg"); if(m) m.textContent = text || ""; }
+async function handleResumeFile(input, targetId, nameId, msgId){
   const file = input && input.files && input.files[0];
   if(!file) return;
-  setUploadMsg("正在识别「" + file.name + "」…");
+  const target = targetId || "resumeText";
+  const mId = msgId || "uploadMsg";
+  setUploadMsg("正在识别「" + file.name + "」…", mId);
   try{
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     let text = "", source = "";
@@ -510,19 +484,25 @@ async function handleResumeFile(input){
     else{ throw new Error("暂不支持 ." + ext + " 文件：请另存为 PDF / docx / txt 后再上传（.doc 老格式浏览器无法解析）"); }
     text = cleanResumeText(text);
     if(text.length < 50) throw new Error("识别出的文字太少（" + text.length + " 字）：可能是扫描/图片版PDF（没有文字层），请改用文字版文件或直接粘贴");
-    const t = document.getElementById("resumeText");
+    const t = document.getElementById(target);
     if(t){
-      if(t.value.trim() && !confirm("上传将覆盖编辑区当前的简历内容，是否继续？")){ setUploadMsg("已取消上传"); if(input) input.value = ""; return; }
+      if(t.value.trim() && !confirm("上传将覆盖当前的简历内容，是否继续？")){ setUploadMsg("已取消上传", mId); if(input) input.value = ""; return; }
       t.value = text;
     }
-    const n = document.getElementById("resumeName");
-    if(n && !n.value.trim()) n.value = file.name.replace(/\.[^.]+$/, "");
-    const cnt = document.getElementById("uploadCharCount"); if(cnt) cnt.textContent = String(text.length);
-    const src = document.getElementById("uploadSource"); if(src) src.textContent = source;
-    const banner = document.getElementById("uploadCheckBanner"); if(banner) banner.classList.remove("hidden");
-    setUploadMsg("✓ 已识别 " + text.length + " 字，请检查下方编辑区");
+    if(nameId){
+      const n = document.getElementById(nameId);
+      if(n && !n.value.trim()) n.value = file.name.replace(/\.[^.]+$/, "");
+    }
+    if(target === "resumeText"){
+      const cnt = document.getElementById("uploadCharCount"); if(cnt) cnt.textContent = String(text.length);
+      const src = document.getElementById("uploadSource"); if(src) src.textContent = source;
+      const banner = document.getElementById("uploadCheckBanner"); if(banner) banner.classList.remove("hidden");
+      setUploadMsg("✓ 已识别 " + text.length + " 字，请检查下方编辑区", mId);
+    }else{
+      setUploadMsg("✓ 已识别 " + text.length + " 字（" + source + "）：机器识别可能有错漏，请通读检查下方文本并修正，再点「生成画像」", mId);
+    }
   }catch(e){
-    setUploadMsg("");
+    setUploadMsg("", mId);
     alert("文件识别失败：" + (e && e.message ? e.message : e));
   }
   if(input) input.value = "";
@@ -664,7 +644,7 @@ function nowStr(){
 
 /* ---------- 引导流程切换 ---------- */
 function switchTab(which){
-  ["guide","paste","import"].forEach(k=>{
+  ["paste","import"].forEach(k=>{
     const cap = k.charAt(0).toUpperCase()+k.slice(1);
     const tab = document.getElementById("tab"+cap);
     const pane = document.getElementById("pane"+cap);
@@ -750,38 +730,19 @@ function extractMeta(text){
 
 /* ---------- 生成画像（统一入口） ---------- */
 function buildProfile(){
-  const activeTab = document.getElementById("tabGuide").classList.contains("active") ? "guide" : "paste";
   let name="", basics="", maxMonths=6, assets=[], skillGaps=[], intent="";
 
-  if(activeTab === "guide"){
-    name = val("g_name");
-    const school = val("g_school");
-    const major = val("g_major");
-    const grad = val("g_avail");
-    const days = val("g_days");
-    maxMonths = parseInt(val("g_months"), 10) || 6;
-    basics = [school, major, grad, days && (days + "/周"), "可实习≤" + maxMonths + "个月"].filter(Boolean).join(" · ");
-    const text = [val("g_exp"), val("g_skills"), val("g_gaps")].join("\n");
-    assets = extractAssets(text);
-    if(!assets.length && val("g_exp")){
-      assets.push({label:"自定义经历", pattern: val("g_exp").replace(/\s+/g,"").slice(0,8), story: val("g_exp").slice(0,40).replace(/\s+/g," ")});
-    }
-    skillGaps = val("g_gaps").split(/[\n、，,；;]/).map(s=>s.trim()).filter(Boolean)
-      .map(g=>({label:g, pattern:g, level:"短板"}));
-    intent = val("g_intent");
-  } else {
-    const text = val("p_resume");
-    intent = val("p_intent");
-    if(!text){ msg("buildMsg", "⚠️ 请先粘贴简历内容"); return; }
-    const meta = extractMeta(text);
-    assets = extractAssets(text);
-    if(!assets.length){
-      assets.push({label:"自定义经历", pattern: text.replace(/\s+/g,"").slice(0,8), story: text.slice(0,40).replace(/\s+/g," ")});
-    }
-    name = meta.name;
-    basics = (meta.school ? meta.school + " · " : "") + "（简历解析自动生成，可在高级编辑中修正）";
-    maxMonths = 6;
+  const text = val("p_resume");
+  intent = val("p_intent");
+  if(!text){ msg("buildMsg", "⚠️ 请先上传简历文件或粘贴简历内容"); return; }
+  const meta = extractMeta(text);
+  assets = extractAssets(text);
+  if(!assets.length){
+    assets.push({label:"自定义经历", pattern: text.replace(/\s+/g,"").slice(0,8), story: text.slice(0,40).replace(/\s+/g," ")});
   }
+  name = meta.name;
+  basics = (meta.school ? meta.school + " · " : "") + "（简历解析自动生成，可在高级编辑中修正）";
+  maxMonths = 6;
 
   const vetoes = buildVetoesFromInput("vetoGuideList");
   const profile = { name, basics, maxMonths, assets, skillGaps, vetoes, intent };
