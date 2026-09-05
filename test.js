@@ -398,5 +398,30 @@ assert("upload stays local (privacy wording)", code3.includes("本地解析，�
 assert("no localhost in lib urls", !JSON.stringify(LIBS).includes("localhost"));
 assert("no 127.0.0.1 in lib urls", !JSON.stringify(LIBS).includes("127.0.0.1"));
 
+console.log("=== Test 16: 贴JD区对比简历选择器 ===");
+assert("jdResumeSel selector present", code3.includes('id="jdResumeSel"'));
+assert("selector wired to pickResumeForCompare", code3.includes("onchange=\"pickResumeForCompare(this.value)\""));
+assert("picker message element present", code3.includes('id="jdResumeMsg"'));
+assert("pickResumeForCompare is function", typeof exportFn("pickResumeForCompare") === "function");
+assert("renderJDResumeSel is function", typeof exportFn("renderJDResumeSel") === "function");
+// renderPasteFromBank 同步刷新对比选择器
+assert("renderPasteFromBank refreshes jd selector", code3.includes("renderPasteFromBank(){") && code3.split("renderPasteFromBank(){")[1].split("}")[0].includes("renderJDResumeSel()") || code3.includes("renderJDResumeSel();"));
+// 选择后载入编辑区（loadResumeToEditor 联动）
+assert("pick loads resume into editor", code3.includes("pickResumeForCompare") && code3.split("function pickResumeForCompare")[1].split("\n").slice(0,8).join("\n").includes("loadResumeToEditor"));
+// 选择器列出已存简历
+sandbox.jdResumeSel = undefined; // fakeEl 已按 id 提供
+setVal("resumeName", "运营版");
+setVal("resumeText", "运营简历正文：用户分层、转化分析。");
+sandbox.saveResume();
+sandbox.renderJDResumeSel();
+const selEl = sandbox.document.getElementById("jdResumeSel");
+assert("jdResumeSel lists saved resume", selEl._html.includes("运营版"));
+assert("jdResumeSel has placeholder option", selEl._html.includes("选择一份储备简历用于对比"));
+// 无简历时选择器仅有占位
+sandbox.localStorage.removeItem("jdfit_resumes");
+sandbox.currentResumeId = null;
+sandbox.renderJDResumeSel();
+assert("jdResumeSel empty bank shows only placeholder", selEl._html.includes("选择一份储备简历用于对比") && !selEl._html.includes("运营版"));
+
 console.log("\n=== Results: " + pass + " passed, " + fail + " failed ===");
 if (fail > 0) process.exit(1);

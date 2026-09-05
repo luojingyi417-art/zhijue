@@ -301,6 +301,11 @@
         <label>JD全文</label>
         <textarea id="jdText" placeholder="把职位描述全文粘贴到这里…"></textarea>
       </div>
+      <div style="margin-top:12px;">
+        <label>对比简历（从「储备简历」选一份，贴JD时可切换对比不同版本）</label>
+        <select id="jdResumeSel" onchange="pickResumeForCompare(this.value)"><option value="">— 选择一份储备简历用于对比 —</option></select>
+        <span id="jdResumeMsg" style="font-size:12.5px;color:var(--sub);"></span>
+      </div>
       <div class="actions">
         <button class="btn btn-primary" onclick="analyze()">⚡ 开始分析</button>
         <button class="btn btn-ghost" onclick="clearJDInputs()">🧹 一键清空</button>
@@ -597,12 +602,31 @@ function copyResumeText(){
 }
 function renderPasteFromBank(){
   const sel = document.getElementById("pasteFromBank");
+  if(sel){
+    const list = loadResumes();
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— 选择一份已保存的简历 —</option>'+
+      list.map(r=>'<option value="'+r.id+'">'+esc(r.name||"未命名")+'</option>').join("");
+    if(cur && list.some(r=>String(r.id)===String(cur))) sel.value = cur;
+  }
+  renderJDResumeSel();
+}
+/* ---------- 贴JD区的对比简历选择器 ---------- */
+function renderJDResumeSel(){
+  const sel = document.getElementById("jdResumeSel");
   if(!sel) return;
   const list = loadResumes();
   const cur = sel.value;
-  sel.innerHTML = '<option value="">— 选择一份已保存的简历 —</option>'+
+  sel.innerHTML = '<option value="">— 选择一份储备简历用于对比 —</option>'+
     list.map(r=>'<option value="'+r.id+'">'+esc(r.name||"未命名")+'</option>').join("");
   if(cur && list.some(r=>String(r.id)===String(cur))) sel.value = cur;
+}
+function pickResumeForCompare(id){
+  if(!id) return;
+  const r = loadResumes().find(x=>String(x.id)===String(id));
+  if(!r) return;
+  loadResumeToEditor(r.id);  // 载入储备简历编辑区：本地规则引擎与AI分析均读取该区
+  msg("jdResumeMsg", "✓ 已载入「"+(r.name||"未命名")+"」，可在下方「AI深度分析」直接对比");
 }
 function fillPasteFromBank(id){
   if(!id) return;
