@@ -6,7 +6,7 @@ let code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // strip DOMContentLoaded listener to avoid runtime DOM dependency
 code = code.replace(/window\.addEventListener[\s\S]*$/, "");
 // expose const declarations to sandbox global
-code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;}catch(e){}";
+code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.profileRedLines=profileRedLines;this.profileDislikes=profileDislikes;}catch(e){}";
 
 // fake DOM + localStorage
 const store = {};
@@ -322,6 +322,8 @@ console.log("=== Test 14: AI 深度分析模块 ===");
 const AI_BACKEND_URL = exportFn("AI_BACKEND_URL");
 const buildAIReportHTML = exportFn("buildAIReportHTML");
 const currentResumeTextForAI = exportFn("currentResumeTextForAI");
+const profileRedLines = exportFn("profileRedLines");
+const profileDislikes = exportFn("profileDislikes");
 assert("AI_BACKEND_URL points to worker", AI_BACKEND_URL === "https://zhijue-backend.luojingyi417.workers.dev");
 assert("aiAnalyze function exists", typeof exportFn("aiAnalyze") === "function");
 assert("aiBox rendered in HTML", code3.includes('id="aiBox"'));
@@ -332,31 +334,51 @@ assert("currentResumeTextForAI prefers editor", currentResumeTextForAI() === "�
 setVal("resumeText", "");
 sandbox.currentResumeId = null;
 assert("currentResumeTextForAI empty when nothing saved", currentResumeTextForAI() === "");
-// buildAIReportHTML renders report structure
+// buildAIReportHTML renders report structure (backend v2 protocol)
 const sampleReport = {
-  verdict: "推荐投递", overallScore: 78,
-  dimensions: [{name: "技能匹配", score: 8, comment: "Excel对口"}],
-  strengths: ["数据分析扎实"], gaps: ["SQL需加强"], resumeSuggestions: ["补充用户分层关键词"],
-  summary: "整体匹配度较高。"
+  status: "正常完成", result: "推荐", score: 82.5,
+  score_details: {"技能匹配": 85, "经验相关性": 80},
+  conflicts: [{level: "中", item: "偶有加班", jd_content: "需配合项目节奏加班"}],
+  reasons: ["六维评分较高", "经历与JD对口"],
+  interview_tips: ["准备用户分层案例"]
 };
 const reportHTML = buildAIReportHTML(sampleReport);
-assert("report renders verdict", reportHTML.includes("推荐投递"));
-assert("report renders score", reportHTML.includes("78"));
-assert("report renders dimension row", reportHTML.includes("技能匹配") && reportHTML.includes("Excel对口"));
-assert("report renders strengths", reportHTML.includes("数据分析扎实"));
-assert("report renders gaps", reportHTML.includes("SQL需加强"));
-assert("report renders suggestions", reportHTML.includes("补充用户分层关键词"));
+assert("report renders result 推荐", reportHTML.includes("推荐"));
+assert("report renders rounded score 83", reportHTML.includes("83"));
+assert("report renders score_details rows", reportHTML.includes("技能匹配") && reportHTML.includes("85"));
+assert("report renders conflicts with jd_content", reportHTML.includes("偶有加班") && reportHTML.includes("JD原文"));
+assert("report renders reasons", reportHTML.includes("经历与JD对口"));
+assert("report renders interview tips", reportHTML.includes("准备用户分层案例"));
 assert("report has human-judgment disclaimer", reportHTML.includes("AI做执行，人做判断"));
+// no conflicts renders hint
+assert("no conflicts renders hint", buildAIReportHTML({result: "可考虑", conflicts: []}).includes("未检测到"));
+// status chip class: vetoed -> miss
+assert("vetoed status chip miss", buildAIReportHTML({status: "被一票否决", result: "不推荐"}).includes('class="chip miss"'));
+// profileRedLines / profileDislikes derive from vetoes
+saveProfileObj({name:"VUser", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[
+  {mode: "veto", keywords: "外包, 加班文化"},
+  {mode: "warn", keywords: "团建、出差"}
+]});
+assert("profileRedLines from veto mode", JSON.stringify(profileRedLines()) === JSON.stringify(["外包","加班文化"]));
+assert("profileDislikes from warn mode", JSON.stringify(profileDislikes()) === JSON.stringify(["团建","出差"]));
+saveProfileObj({name:"V2", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[]});
+assert("profileRedLines empty when no vetoes", profileRedLines().length === 0);
+assert("profileDislikes empty when no vetoes", profileDislikes().length === 0);
+// aiAnalyze sends four fields to backend v2
+assert("aiAnalyze body includes redLines+dislikes", code3.includes("redLines: profileRedLines(), dislikes: profileDislikes()"));
+assert("aiAnalyze detects legacy backend format", code3.includes("旧版报告格式"));
 // XSS safety: report content is escaped
-const xssReport = {verdict: '<img src=x onerror=alert(1)>', dimensions: [], strengths: ["<script>bad()</script>"], gaps: [], resumeSuggestions: [], summary: ""};
+const xssReport = {result: '<img src=x onerror=alert(1)>', conflicts: [], reasons: ["<script>bad()</script>"], interview_tips: [], score_details: {}};
 const xssHTML = buildAIReportHTML(xssReport);
 assert("XSS: script content escaped", !xssHTML.includes("<script>bad"));
 assert("XSS: img tag not executable", !xssHTML.includes("<img") && xssHTML.includes("&lt;img"));
 // edge cases
 assert("null report returns empty", buildAIReportHTML(null) === "");
-assert("empty arrays render dash", buildAIReportHTML({verdict: "谨慎投递", dimensions: [], strengths: [], gaps: [], resumeSuggestions: []}).includes("—"));
-assert("verdict emoji: 推荐=green", buildAIReportHTML(sampleReport).includes("🟢"));
-assert("verdict emoji: 不建议=red", buildAIReportHTML({...sampleReport, verdict: "不建议投递"}).includes("🔴"));
+assert("empty arrays render dash", buildAIReportHTML({result: "可考虑", conflicts: [], reasons: [], interview_tips: []}).includes("—"));
+assert("result emoji: 推荐=green", buildAIReportHTML(sampleReport).includes("🟢"));
+assert("result emoji: 不推荐=red", buildAIReportHTML({...sampleReport, result: "不推荐"}).includes("🔴"));
+assert("result emoji: 可考虑=yellow", buildAIReportHTML({...sampleReport, result: "可考虑"}).includes("🟡"));
+assert("unknown result emoji: gray", buildAIReportHTML({...sampleReport, result: ""}).includes("⚪"));
 
 console.log("=== Test 15: 简历文件上传（PDF/Word/TXT本地解析）===");
 // HTML 结构：上传按钮、file input、检查提示条

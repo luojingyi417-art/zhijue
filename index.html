@@ -1058,6 +1058,16 @@ function currentResumeTextForAI(){
   }
   return "";
 }
+function profileRedLines(){
+  return ((PROFILE && PROFILE.vetoes) || [])
+    .filter(v=>v.mode !== "warn" && v.keywords)
+    .reduce((acc,v)=>acc.concat(v.keywords.split(/[，,、;\n]/).map(s=>s.trim()).filter(Boolean)), []);
+}
+function profileDislikes(){
+  return ((PROFILE && PROFILE.vetoes) || [])
+    .filter(v=>v.mode === "warn" && v.keywords)
+    .reduce((acc,v)=>acc.concat(v.keywords.split(/[，,、;\n]/).map(s=>s.trim()).filter(Boolean)), []);
+}
 async function aiAnalyze(){
   const box = document.getElementById("aiBox");
   const btn = document.getElementById("aiBtn");
@@ -1071,10 +1081,11 @@ async function aiAnalyze(){
     const resp = await fetch(AI_BACKEND_URL + "/analyze", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({resume: resume, jd: jd})
+      body: JSON.stringify({resume: resume, jd: jd, redLines: profileRedLines(), dislikes: profileDislikes()})
     });
     const data = await resp.json().catch(()=>({}));
     if(!resp.ok || !data.ok) throw new Error(data.error || ("HTTP " + resp.status));
+    if(!data.report || !data.report.result) throw new Error("后端返回了旧版报告格式，请部署最新 zhijue-backend");
     if(box) box.innerHTML = buildAIReportHTML(data.report);
   }catch(e){
     if(box) box.innerHTML = '<div style="padding:12px 14px;border:1px solid #e5b1b1;background:#fdf0f0;border-radius:10px;color:#a33;font-size:13.5px;">❌ AI分析失败：'+esc(e.message||String(e))+'<br>可稍后重试，或直接使用上方本地规则引擎结果。</div>';
@@ -1084,29 +1095,39 @@ async function aiAnalyze(){
 }
 function buildAIReportHTML(r){
   if(!r || typeof r !== "object") return "";
-  const verdictEmoji = /推荐/.test(r.verdict||"") ? "🟢" : /谨慎/.test(r.verdict||"") ? "🟡" : /不建议/.test(r.verdict||"") ? "🔴" : "⚪";
-  const dimRows = (r.dimensions||[]).map(d=>
-    '<tr>'+
-    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap;"><b>'+esc(d.name||"")+'</b></td>'+
-    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);text-align:center;"><b>'+esc(String(d.score??"—"))+'</b></td>'+
-    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);color:var(--sub);">'+esc(d.comment||"")+'</td>'+
-    '</tr>').join("");
+  const resultMap = {"推荐":"🟢","可考虑":"🟡","不推荐":"🔴"};
+  const emoji = resultMap[r.result] || "⚪";
+  const vetoed = (r.status === "被一票否决");
   const listHTML = (arr) => (arr && arr.length)
     ? '<ul style="margin:6px 0 0 18px;padding:0;font-size:13.5px;">'+arr.map(x=>'<li style="margin:3px 0;">'+esc(String(x))+'</li>').join("")+'</ul>'
     : '<div style="color:var(--sub);font-size:13px;">—</div>';
   const section = (icon, title, body) =>
     '<div style="margin-top:14px;"><div style="font-size:13.5px;font-weight:600;">'+icon+' '+title+'</div>'+body+'</div>';
+  const conflictsHTML = (r.conflicts && r.conflicts.length)
+    ? r.conflicts.map(c=>{
+        const lv = String(c.level||"");
+        const color = lv.indexOf("高")>=0 ? "#a5231b" : (lv.indexOf("中")>=0 ? "#8a5a00" : "#0b6e40");
+        return '<div style="border:1px solid var(--line);border-left:3px solid '+color+';border-radius:10px;padding:10px 12px;margin-top:8px;background:#fff;font-size:13.5px;">'+
+          '<b style="color:'+color+';">'+esc(lv||"冲突")+'</b> · '+esc(String(c.item||""))+
+          (c.jd_content ? '<div style="color:var(--sub);margin-top:4px;font-size:12.5px;">JD原文：'+esc(String(c.jd_content))+'</div>' : '')+
+        '</div>';
+      }).join("")
+    : '<div style="color:var(--sub);font-size:13px;margin-top:6px;">未检测到与「不喜欢的工作内容」的冲突</div>';
+  const sd = r.score_details || {};
+  const dimRows = Object.keys(sd).map(k=>
+    '<tr><td style="padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap;"><b>'+esc(k)+'</b></td>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);text-align:center;"><b>'+esc(String(sd[k]))+'</b> / 100</td></tr>').join("");
   return ''+
-    '<div style="border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfcfe;">'+
+    '<div style="border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfcfe;margin-top:12px;">'+
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
-      '<span style="font-size:18px;font-weight:700;">'+verdictEmoji+' '+esc(r.verdict||"未知")+'</span>'+
-      (r.overallScore != null ? '<span style="font-size:14px;color:var(--sub);">综合分 <b style="color:var(--ink);">'+esc(String(r.overallScore))+'</b>/100</span>' : '')+
+      '<span style="font-size:18px;font-weight:700;">'+emoji+' '+esc(r.result||"未知")+'</span>'+
+      (typeof r.score === "number" ? '<span style="font-size:14px;color:var(--sub);">综合匹配分 <b style="color:var(--ink);font-size:16px;">'+Math.round(r.score)+'</b>/100</span>' : '')+
+      '<span class="chip '+(vetoed?"miss":"hit")+'">'+esc(r.status||"")+'</span>'+
     '</div>'+
-    (r.summary ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.6;">'+esc(r.summary)+'</div>' : '')+
-    (dimRows ? '<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px;"><thead><tr style="text-align:left;color:var(--sub);font-size:12.5px;"><th style="padding:4px 10px;border-bottom:1px solid var(--line);">维度</th><th style="padding:4px 10px;border-bottom:1px solid var(--line);text-align:center;">分</th><th style="padding:4px 10px;border-bottom:1px solid var(--line);">点评</th></tr></thead><tbody>'+dimRows+'</tbody></table>' : '')+
-    section("💪", "优势", listHTML(r.strengths))+
-    section("⚠️", "差距", listHTML(r.gaps))+
-    section("✍️", "简历修改建议", listHTML(r.resumeSuggestions))+
+    (dimRows ? '<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px;">'+dimRows+'</table>' : '')+
+    section("⚠️", "画像冲突检测（引用JD原文）", conflictsHTML)+
+    section("🧾", "核心理由", listHTML(r.reasons))+
+    section("💡", "面试准备建议", listHTML(r.interview_tips))+
     '<div style="margin-top:12px;font-size:12px;color:var(--sub);border-top:1px dashed var(--line);padding-top:10px;">以上由 DeepSeek 生成，仅作参考——最终投递判断以你的红线和六维评分为准（AI做执行，人做判断）。</div>'+
     '</div>';
 }
