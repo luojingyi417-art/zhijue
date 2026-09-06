@@ -137,6 +137,32 @@
   .sl-table td select{font-size:13px; padding:5px 8px; width:auto;}
   .pin-btn{background:none; border:1px solid var(--line); border-radius:8px; padding:3px 10px; cursor:pointer; font-size:12.5px; color:var(--sub); font-family:inherit; white-space:nowrap;}
   .pin-btn.on{background:var(--blue-bg); color:var(--blue); border-color:var(--blue);}
+  /* ================= 画像配置向导（Step 1-4） ================= */
+  .wz-card{max-width:800px; margin:0 auto 16px;}
+  .wz-progress{height:8px; background:var(--chip); border-radius:99px; overflow:hidden; margin:14px 0 6px;}
+  .wz-bar{height:100%; width:25%; background:var(--blue); border-radius:99px; transition:width .35s ease;}
+  .wz-stepnum{font-size:12.5px; color:var(--sub); margin-bottom:10px;}
+  .wz-step{display:none;}
+  .wz-step.active{display:block; animation:wzfade .3s ease;}
+  @keyframes wzfade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  .wz-title{font-size:30px; text-align:center; margin:26px 0 10px; letter-spacing:.5px;}
+  .wz-sub{color:var(--sub); text-align:center; font-size:14.5px; margin-bottom:18px;}
+  .wz-center{justify-content:center; text-align:center;}
+  .wz-big{padding:13px 46px; font-size:16px;}
+  .wz-between{justify-content:space-between;}
+  .wz-drop{border:2px dashed var(--line); border-radius:14px; padding:26px 16px; text-align:center; color:var(--sub); font-size:14.5px; cursor:pointer; transition:.2s; background:#fbfcfe; margin-bottom:8px;}
+  .wz-drop:hover,.wz-drop.drag{border-color:var(--blue); background:var(--blue-bg); color:var(--blue);}
+  .wz-drop span{font-size:12.5px;}
+  .wz-addrow{display:flex; gap:8px;}
+  .wz-addrow input{flex:1;}
+  .wz-tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
+  .wz-tag{border:1px solid var(--line); background:#fbfcfe; color:var(--ink); border-radius:999px; padding:4px 13px; font-size:13px; cursor:pointer; transition:.15s; user-select:none;}
+  .wz-tag:hover{border-color:var(--blue); color:var(--blue);}
+  .wz-tag.on{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .wz-sel{display:inline-flex; align-items:center; gap:6px; background:var(--blue-bg); border:1px solid var(--blue); color:var(--blue); border-radius:999px; padding:4px 8px 4px 12px; font-size:13px;}
+  .wz-sel a{cursor:pointer; color:var(--blue); font-weight:700; text-decoration:none; padding:0 4px; border-radius:50%;}
+  .wz-sel a:hover{background:var(--blue); color:#fff;}
+  .wz-import{border:1px solid var(--line); border-radius:12px; padding:14px; margin-top:12px; background:#fbfcfe; text-align:left;}
   .spin{display:inline-block; width:14px; height:14px; border:2px solid var(--blue); border-top-color:transparent; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
   @media(max-width:640px){ h1{font-size:21px;} .advice-item b, .ov-row b{flex-basis:100%;} .hi-track{flex-direction:column;} .hi-track select{flex:1 1 auto; min-width:0;} .stat-grid{grid-template-columns:repeat(2,1fr);} .sl-table th:nth-child(3), .sl-table td:nth-child(3){display:none;} .bottom-nav .bn-item{font-size:11px;} }
@@ -145,62 +171,87 @@
 <body>
 <div class="wrap">
 
-  <!-- ================= 入职引导：个人画像设计 ================= -->
-  <div id="onboarding" class="card">
+  <!-- ================= 职觉 · 职业画像：4 步配置向导 ================= -->
+  <div id="onboarding" class="card wz-card">
     <span class="privacy-badge">🔒 本地运行 · 你的信息只存在自己浏览器，不会上传</span>
-    <h1 style="margin-bottom:6px;"><span class="logo">◉</span> 先设计你的个人画像</h1>
-    <p class="tagline" style="margin-bottom:16px;">这个工具靠"你的经历资产"去匹配 JD。请先告诉我们你是谁、有什么牌——两种方式任选：<b>上传简历自动生成</b> / <b>导入已有画像</b>。填完信息只存在你本地浏览器（换设备用「导出画像」迁移）。</p>
 
-    <div class="tabs">
-      <div class="tab active" id="tabPaste" onclick="switchTab('paste')">📤 上传简历自动生成</div>
-      <div class="tab" id="tabImport" onclick="switchTab('import')">📥 导入已有画像</div>
-    </div>
+    <!-- 进度条：4 步 -->
+    <div class="wz-progress"><div class="wz-bar" id="wzBar"></div></div>
+    <div class="wz-stepnum" id="wzStepNum">步骤 1 / 4</div>
 
-    <!-- 上传/粘贴简历 -->
-    <div class="tabpane active" id="panePaste">
-      <div class="card" style="box-shadow:none; background:#fbfcfe;">
-        <label>上传简历文件（PDF / Word / TXT，本地解析不上传）或直接粘贴全文</label>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <button class="btn btn-ghost" onclick="document.getElementById('p_file').click()">📤 上传简历文件</button>
-          <input type="file" id="p_file" accept=".pdf,.docx,.txt" style="display:none" onchange="handleResumeFile(this,'p_resume',null,'p_uploadMsg')">
-          <span id="p_uploadMsg" style="font-size:12.5px;color:var(--sub);"></span>
-        </div>
-        <textarea id="p_resume" placeholder="上传后自动识别填入（识别结果可能有错漏，请通读检查修正），或直接粘贴简历全文…系统会自动识别你的姓名、学校，并从经历里抽取可匹配的能力标签（咨询 / 行业研究 / 竞品 / 用户调研 / 数据分析 / AI工具 / 互联网 / 垂直行业 / 方法论沉淀 等）"></textarea>
-        <label style="margin-top:14px;">或从「储备简历」直接导入（可选）</label>
-        <select id="pasteFromBank" onchange="fillPasteFromBank(this.value)"><option value="">— 选择一份已保存的简历 —</option></select>
-        <div style="margin-top:12px;">
-          <label>求职意向与方向优先级（选填）</label>
-          <textarea id="p_intent" style="min-height:70px;" placeholder="例：主攻用户运营，商业分析并行"></textarea>
-        </div>
-        <p class="hint">自动生成是<b>启发式抽取</b>（从文本里识别关键词并生成标签+例句），不是魔法——上传/粘贴后请检查识别结果，生成后可在下一步「高级编辑」里增删改任何一条。</p>
+    <!-- Step 1：引导页 -->
+    <div class="wz-step active" id="wz1">
+      <h1 class="wz-title"><span class="logo">◉</span> 职觉 · 职业画像</h1>
+      <p class="wz-sub">3 步建立你的职业偏好画像，之后每次 JD 分析都基于你的个人设定</p>
+      <div class="actions wz-center">
+        <button class="btn btn-primary wz-big" onclick="wzGo(2)">开始创建</button>
       </div>
-    </div>
-
-    <!-- 导入画像 -->
-    <div class="tabpane" id="paneImport">
-      <div class="card" style="box-shadow:none; background:#fbfcfe;">
-        <label>方式一：选择之前导出的画像文件（.json）</label>
+      <p class="hint wz-center" style="margin-top:16px;">已有导出的画像文件？<a style="color:var(--blue);cursor:pointer;" onclick="toggleWzImport()">📥 导入已有画像</a>（换设备 / 换浏览器时恢复用）</p>
+      <div class="wz-import hidden" id="wzImportBox">
+        <label>选择之前导出的画像文件（.json），或直接粘贴画像 JSON</label>
         <input type="file" id="importFile" accept=".json,application/json" onchange="importProfileFile(this)" style="font-size:13.5px; border:1px solid var(--line); border-radius:10px; padding:8px 12px; background:#fff;">
-        <label style="margin-top:14px;">方式二：把画像JSON直接粘贴到这里</label>
-        <textarea id="importText" style="min-height:130px; font-size:12.5px;" placeholder='{"app":"jd-fit-agent", "profile": { ... }} 或直接粘贴画像对象'></textarea>
+        <textarea id="importText" style="min-height:100px; font-size:12.5px; margin-top:8px;" placeholder='{"app":"jd-fit-agent", "profile": { ... }} 或直接粘贴画像对象'></textarea>
         <div class="actions">
           <button class="btn btn-primary" onclick="importFromPaste()">📥 导入并进入</button>
           <span id="importMsg" class="copy-ok"></span>
         </div>
-        <p class="hint">换浏览器、换电脑、或清了缓存？用之前「导出画像」保存的JSON文件一键恢复你的画像和红线设置（不含检测历史与储备简历）。文件只在你本地读取，不会上传。</p>
+        <p class="hint" style="text-align:left;">导入只在你本地浏览器读取，不会上传。</p>
       </div>
     </div>
 
-    <!-- 我的一票否决红线（引导式自填，各tab共享） -->
-    <div class="card" style="box-shadow:none; background:#fbfcfe; margin-top:16px;">
-      <h2 style="font-size:15px;">🚫 我的一票否决红线 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（自己填关键词，逗号分隔）</span></h2>
-      <p class="hint" style="margin-bottom:10px;">以下每个分类你填入关键词（逗号或顿号分隔），贴入JD时自动检查是否命中。留空 = 该分类不检查。实习时长会根据你上面填的月数上限自动判断。</p>
-      <div id="vetoGuideList"></div>
+    <!-- Step 2：导入简历 -->
+    <div class="wz-step" id="wz2">
+      <h2>导入你的简历</h2>
+      <div class="wz-drop" id="wzDrop" onclick="document.getElementById('wzFile').click()"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="event.preventDefault();this.classList.remove('drag');wzHandleDrop(event)">
+        📄 拖拽简历文件到这里，或点击上传<br>
+        <span>支持 .docx / .pdf / .txt（本地解析，文件不上传；机器识别可能有错漏，请通读检查）</span>
+      </div>
+      <input type="file" id="wzFile" accept=".docx,.pdf,.txt" style="display:none" onchange="handleResumeFile(this,'wzResume',null,'wzUploadMsg')">
+      <span id="wzUploadMsg" style="font-size:12.5px;color:var(--sub);"></span>
+      <textarea id="wzResume" style="margin-top:8px;" placeholder="上传后自动提取文本显示在这里，也可以直接粘贴简历全文；内容可编辑修改…"></textarea>
+      <div class="actions wz-between">
+        <button class="btn btn-ghost" onclick="wzGo(1)">← 上一步</button>
+        <button class="btn btn-primary" onclick="wzNext2()">确认，下一步</button>
+      </div>
     </div>
 
-    <div class="actions">
-      <button class="btn btn-primary" onclick="buildProfile()" id="buildBtn">✅ 生成画像并进入</button>
-      <span id="buildMsg" class="copy-ok"></span>
+    <!-- Step 3：设置红线关键词 -->
+    <div class="wz-step" id="wz3">
+      <h2>设置红线关键词</h2>
+      <p class="wz-sub">这些关键词一旦出现在 JD 中，系统将自动标记为「不推荐」</p>
+      <div class="wz-addrow">
+        <input type="text" id="wzRedInput" placeholder="输入自定义关键词（支持逗号分隔多个），回车或点添加" onkeydown="if(event.key==='Enter'){event.preventDefault();wzAddRed();}">
+        <button class="btn btn-primary" onclick="wzAddRed()">＋ 添加</button>
+      </div>
+      <label style="margin-top:16px;">预设标签（点击添加 / 再点取消）</label>
+      <div class="wz-tags" id="wzRedPresets"></div>
+      <label style="margin-top:16px;">已选关键词 <span id="wzRedCount" style="color:var(--blue);font-weight:600;"></span></label>
+      <div class="wz-tags" id="wzRedSel"></div>
+      <div class="actions wz-between" style="margin-top:20px;">
+        <button class="btn btn-ghost" onclick="wzGo(2)">← 上一步</button>
+        <button class="btn btn-primary" onclick="wzGo(4)">确认，下一步</button>
+      </div>
+    </div>
+
+    <!-- Step 4：设置不喜欢的工作内容 -->
+    <div class="wz-step" id="wz4">
+      <h2>设置你不喜欢的工作内容</h2>
+      <p class="wz-sub">这些内容将帮助系统更精准地匹配你的偏好</p>
+      <div class="wz-addrow">
+        <input type="text" id="wzDisInput" placeholder="输入自定义内容（支持逗号分隔多个），回车或点添加" onkeydown="if(event.key==='Enter'){event.preventDefault();wzAddDis();}">
+        <button class="btn btn-primary" onclick="wzAddDis()">＋ 添加</button>
+      </div>
+      <label style="margin-top:16px;">预设标签（点击添加 / 再点取消）</label>
+      <div class="wz-tags" id="wzDisPresets"></div>
+      <label style="margin-top:16px;">已选内容 <span id="wzDisCount" style="color:var(--blue);font-weight:600;"></span></label>
+      <div class="wz-tags" id="wzDisSel"></div>
+      <div class="actions wz-between" style="margin-top:20px;">
+        <button class="btn btn-ghost" onclick="wzGo(3)">← 上一步</button>
+        <button class="btn btn-primary" onclick="wzFinish()">✅ 完成，创建画像</button>
+      </div>
     </div>
   </div>
 
@@ -389,7 +440,7 @@
       </div>
     </div>
 
-    <div class="footer-note">职觉 v1.0 · 画像配置（Step 1-4：简历导入 → 红线 → 不喜欢）→ JD分析（AI深度分析 + 简历优化）→ 待投递 → 历史 · 后端 zhijue-backend（DeepSeek） · 数据仅存本地浏览器 · AI做执行，人做判断</div>
+    <div class="footer-note">职觉 v1.1 · 画像配置向导（Step1 引导 → Step2 简历导入 → Step3 红线关键词 → Step4 不喜欢的工作内容）→ JD分析（DeepSeek AI深度分析 + 简历优化）→ 待投递 → 历史 · 后端 zhijue-backend · 数据仅存本地浏览器 · AI做执行，人做判断</div>
   </div>
 </div>
 
@@ -558,6 +609,12 @@ function setUploadMsg(text, msgId){ const m = document.getElementById(msgId || "
 async function handleResumeFile(input, targetId, nameId, msgId){
   const file = input && input.files && input.files[0];
   if(!file) return;
+  await handleResumeFileObj(file, targetId || "resumeText", nameId, msgId || "uploadMsg");
+  if(input) input.value = "";
+}
+/* 供文件选择框与拖拽上传共用：file 对象 → 解析 → 写入目标文本框 */
+async function handleResumeFileObj(file, targetId, nameId, msgId){
+  if(!file) return;
   const target = targetId || "resumeText";
   const mId = msgId || "uploadMsg";
   setUploadMsg("正在识别「" + file.name + "」…", mId);
@@ -572,7 +629,7 @@ async function handleResumeFile(input, targetId, nameId, msgId){
     if(text.length < 50) throw new Error("识别出的文字太少（" + text.length + " 字）：可能是扫描/图片版PDF（没有文字层），请改用文字版文件或直接粘贴");
     const t = document.getElementById(target);
     if(t){
-      if(t.value.trim() && !confirm("上传将覆盖当前的简历内容，是否继续？")){ setUploadMsg("已取消上传", mId); if(input) input.value = ""; return; }
+      if(t.value.trim() && !confirm("上传将覆盖当前的简历内容，是否继续？")){ setUploadMsg("已取消上传", mId); return; }
       t.value = text;
     }
     if(nameId){
@@ -585,13 +642,12 @@ async function handleResumeFile(input, targetId, nameId, msgId){
       const banner = document.getElementById("uploadCheckBanner"); if(banner) banner.classList.remove("hidden");
       setUploadMsg("✓ 已识别 " + text.length + " 字，请检查下方编辑区", mId);
     }else{
-      setUploadMsg("✓ 已识别 " + text.length + " 字（" + source + "）：机器识别可能有错漏，请通读检查下方文本并修正，再点「生成画像」", mId);
+      setUploadMsg("✓ 已识别 " + text.length + " 字（" + source + "）：机器识别可能有错漏，请通读检查下方文本并修正，再点「下一步」", mId);
     }
   }catch(e){
     setUploadMsg("", mId);
     alert("文件识别失败：" + (e && e.message ? e.message : e));
   }
-  if(input) input.value = "";
 }
 function confirmResumeUpload(){
   const b = document.getElementById("uploadCheckBanner");
@@ -620,7 +676,6 @@ function renderResumeList(){
       '<span class="chip'+(r.id===currentResumeId?' hit':'')+'" style="cursor:pointer;" onclick="loadResumeToEditor('+r.id+')" title="点击载入查看">'+esc(r.name||"未命名")+'<span class="rb-x" onclick="event.stopPropagation();deleteResume('+r.id+')" title="删除这份简历">×</span></span>'
     ).join("") : '<span style="font-size:13px;color:var(--sub);">暂无储备简历：粘贴一份并点「保存简历」。</span>';
   }
-  renderPasteFromBank();
 }
 function loadResumeToEditor(id){
   const r = loadResumes().find(x=>x.id===id);
@@ -666,23 +721,6 @@ function copyResumeText(){
     document.execCommand("copy"); document.body.removeChild(ta); msg("resumeMsg","✓ 已复制");
   });
 }
-function renderPasteFromBank(){
-  const sel = document.getElementById("pasteFromBank");
-  if(sel){
-    const list = loadResumes();
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">— 选择一份已保存的简历 —</option>'+
-      list.map(r=>'<option value="'+r.id+'">'+esc(r.name||"未命名")+'</option>').join("");
-    if(cur && list.some(r=>String(r.id)===String(cur))) sel.value = cur;
-  }
-}
-function fillPasteFromBank(id){
-  if(!id) return;
-  const r = loadResumes().find(x=>String(x.id)===String(id));
-  if(!r) return;
-  const t = document.getElementById("p_resume");
-  if(t) t.value = r.text || "";
-}
 
 /* ---------- JD输入一键清空 ---------- */
 function clearJDInputs(){
@@ -714,15 +752,160 @@ function nowStr(){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
 }
 
-/* ---------- 引导流程切换 ---------- */
-function switchTab(which){
-  ["paste","import"].forEach(k=>{
-    const cap = k.charAt(0).toUpperCase()+k.slice(1);
-    const tab = document.getElementById("tab"+cap);
-    const pane = document.getElementById("pane"+cap);
-    if(tab) tab.classList.toggle("active", which===k);
-    if(pane) pane.classList.toggle("active", which===k);
-  });
+/* ---------- 画像配置向导（Step 1-4） ---------- */
+/* Step 3 预设红线关键词 */
+const WZ_RED_PRESETS = ["理工科优先","XX专业优先","硕士及以上学历","有相关实习经验","Python/SQL/Excel","熟悉数据分析工具","有建模能力","有编程基础","熟练使用办公软件","有运营账号经验","有公众号/小红书/知乎等平台运营经验","有项目经验","有作品集","能承受高强度工作","能接受出差","能快速到岗","每周坐班X天","接受加班","互联网","金融","咨询","医药","甲方/乙方经验","熟悉行业政策","能独立完成","抗压能力强","沟通能力强","结果导向","自主学习能力"];
+/* Step 4 预设不喜欢的工作内容 */
+const WZ_DIS_PRESETS = ["频繁出差","无晋升通道","不缴纳公积金","外包岗位","试用期辞退","不签合同","无条件加班","群消息@所有人","团建","单休","大小周"];
+
+let wzRed = [];   /* 已选红线关键词 */
+let wzDis = [];   /* 已选不喜欢的工作内容 */
+
+/* 步骤切换：n=1..4，进度条宽度 = n*25% */
+function wzGo(n){
+  for(let i=1;i<=4;i++){
+    const el = document.getElementById("wz"+i);
+    if(el) el.classList.toggle("active", i===n);
+  }
+  const bar = document.getElementById("wzBar");
+  if(bar) bar.style.width = (n*25)+"%";
+  const sn = document.getElementById("wzStepNum");
+  if(sn) sn.textContent = "步骤 "+n+" / 4";
+}
+/* Step 1 展开导入已有画像 */
+function toggleWzImport(){
+  const b = document.getElementById("wzImportBox");
+  if(b) b.classList.toggle("hidden");
+}
+/* Step 2 拖拽上传 */
+function wzHandleDrop(ev){
+  const f = ev && ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if(f) handleResumeFileObj(f, "wzResume", null, "wzUploadMsg");
+}
+/* Step 2 → 3：校验简历内容 */
+function wzNext2(){
+  const t = val("wzResume").trim();
+  if(t.length < 30){ msg("wzUploadMsg", "⚠️ 请先上传简历文件或粘贴简历内容（至少30字）"); return; }
+  wzGo(3);
+}
+/* 渲染预设标签 + 已选列表（红线 / 不喜欢 通用） */
+function renderWzTags(kind){
+  const presets = kind==="red" ? WZ_RED_PRESETS : WZ_DIS_PRESETS;
+  const sel = kind==="red" ? wzRed : wzDis;
+  const pbox = document.getElementById(kind==="red" ? "wzRedPresets" : "wzDisPresets");
+  if(pbox){
+    pbox.innerHTML = presets.map(t=>
+      '<span class="wz-tag'+(sel.includes(t)?" on":"")+'" onclick="wzTogglePreset(\''+kind+'\',\''+escAttr(t)+'\')">'+esc(t)+'</span>'
+    ).join("");
+  }
+  const sbox = document.getElementById(kind==="red" ? "wzRedSel" : "wzDisSel");
+  if(sbox){
+    sbox.innerHTML = sel.length
+      ? sel.map((t,i)=>'<span class="wz-sel">'+esc(t)+'<a onclick="wzRemoveTag(\''+kind+'\','+i+')" title="删除">✕</a></span>').join("")
+      : '<span style="font-size:13px;color:var(--sub);">（暂未选择，可点上方预设标签或手动输入）</span>';
+  }
+  const cnt = document.getElementById(kind==="red" ? "wzRedCount" : "wzDisCount");
+  if(cnt) cnt.textContent = sel.length ? "（"+sel.length+" 条）" : "";
+}
+function renderWzAll(){ renderWzTags("red"); renderWzTags("dis"); }
+/* 预设标签点击：选中/取消 */
+function wzTogglePreset(kind, tag){
+  const arr = kind==="red" ? wzRed : wzDis;
+  const i = arr.indexOf(tag);
+  if(i >= 0) arr.splice(i, 1);
+  else arr.push(tag);
+  renderWzTags(kind);
+}
+/* 已选列表删除 */
+function wzRemoveTag(kind, i){
+  const arr = kind==="red" ? wzRed : wzDis;
+  if(i >= 0 && i < arr.length) arr.splice(i, 1);
+  renderWzTags(kind);
+}
+/* 手动输入添加（支持逗号/顿号分隔多个） */
+function wzAddRed(){
+  const el = document.getElementById("wzRedInput");
+  const v = el ? el.value.trim() : "";
+  if(!v) return;
+  v.split(/[，,、]/).map(s=>s.trim()).filter(Boolean).forEach(k=>{ if(!wzRed.includes(k)) wzRed.push(k); });
+  if(el) el.value = "";
+  renderWzTags("red");
+}
+function wzAddDis(){
+  const el = document.getElementById("wzDisInput");
+  const v = el ? el.value.trim() : "";
+  if(!v) return;
+  v.split(/[，,、]/).map(s=>s.trim()).filter(Boolean).forEach(k=>{ if(!wzDis.includes(k)) wzDis.push(k); });
+  if(el) el.value = "";
+  renderWzTags("dis");
+}
+/* ---------- 向导数据存储（规格结构：{profile:{resume,redLines,dislikes}, profileCompleted}） ---------- */
+function saveWizardConfig(resume, redLines, dislikes, completed){
+  try{
+    localStorage.setItem("zhijue_profile", JSON.stringify({
+      profile: {resume: resume || "", redLines: redLines || [], dislikes: dislikes || []},
+      profileCompleted: !!completed
+    }));
+  }catch(e){}
+}
+function loadWizardConfig(){
+  try{
+    const s = localStorage.getItem("zhijue_profile");
+    if(s) return JSON.parse(s);
+  }catch(e){}
+  return null;
+}
+/* 向导简历同步到「储备简历」，保证 JD 分析立即可用 */
+function syncWizardResume(text){
+  try{
+    const list = loadResumes();
+    let r = list.find(x=>x.name === "画像简历");
+    if(r){ r.text = text; }
+    else{ r = {id: Date.now(), name: "画像简历", text: text, addedAt: nowStr()}; list.push(r); }
+    saveResumes(list);
+    currentResumeId = r.id;
+    const t = document.getElementById("resumeText");
+    if(t) t.value = text;
+  }catch(e){}
+}
+/* Step 4 完成：生成画像（引擎结构）+ 规格存储 + 进分析页 */
+function wzFinish(){
+  const text = val("wzResume").trim();
+  if(!text || text.length < 30){ alert("请先在 Step 2 上传或粘贴简历内容"); wzGo(2); return; }
+  const meta = extractMeta(text);
+  let assets = extractAssets(text);
+  if(!assets.length){
+    assets.push({label:"自定义经历", pattern: text.replace(/\s+/g,"").slice(0,8), story: text.slice(0,40).replace(/\s+/g," ")});
+  }
+  const vetoes = [];
+  if(wzRed.length) vetoes.push({cat:"custom", label:"红线关键词", keywords: wzRed.join(", "), mode:"veto", hint:"画像向导 Step 3 设置，命中即标记不推荐"});
+  if(wzDis.length) vetoes.push({cat:"boringWork", label:"不喜欢的工作内容", keywords: wzDis.join(", "), mode:"warn", hint:"画像向导 Step 4 设置，命中提示冲突（警告级）"});
+  const profile = {
+    name: meta.name,
+    basics: (meta.school ? meta.school + " · " : "") + "（画像向导自动生成，可在仪表盘高级编辑中修正）",
+    maxMonths: 6, assets, skillGaps: [], vetoes, intent: ""
+  };
+  saveWizardConfig(text, wzRed.slice(), wzDis.slice(), true);  /* 规格存储 */
+  syncWizardResume(text);                                       /* 简历入储备区 */
+  enterProfile(profile);                                        /* 进主应用（默认 JD 分析页） */
+}
+/* 从已存数据回填向导（重新设计画像时） */
+function wzPrefill(){
+  const cfg = loadWizardConfig();
+  if(cfg && cfg.profile && cfg.profile.resume){
+    const t = document.getElementById("wzResume");
+    if(t) t.value = cfg.profile.resume;
+    wzRed = Array.isArray(cfg.profile.redLines) ? cfg.profile.redLines.slice() : [];
+    wzDis = Array.isArray(cfg.profile.dislikes) ? cfg.profile.dislikes.slice() : [];
+  }else if(PROFILE){
+    /* 兼容旧画像：从 vetoes 派生 */
+    wzRed = profileRedLines();
+    wzDis = profileDislikes();
+    const r = loadResumes().find(x=>x.name === "画像简历");
+    const t = document.getElementById("wzResume");
+    if(t && r) t.value = r.text || "";
+  }
+  renderWzAll();
 }
 
 /* ---------- 红线引导渲染（onboarding + 编辑面板通用） ---------- */
@@ -800,25 +983,24 @@ function extractMeta(text){
   return {name, school};
 }
 
-/* ---------- 生成画像（统一入口） ---------- */
-function buildProfile(){
-  let name="", basics="", maxMonths=6, assets=[], skillGaps=[], intent="";
-
-  const text = val("p_resume");
-  intent = val("p_intent");
-  if(!text){ msg("buildMsg", "⚠️ 请先上传简历文件或粘贴简历内容"); return; }
-  const meta = extractMeta(text);
-  assets = extractAssets(text);
-  if(!assets.length){
-    assets.push({label:"自定义经历", pattern: text.replace(/\s+/g,"").slice(0,8), story: text.slice(0,40).replace(/\s+/g," ")});
-  }
-  name = meta.name;
-  basics = (meta.school ? meta.school + " · " : "") + "（简历解析自动生成，可在高级编辑中修正）";
-  maxMonths = 6;
-
-  const vetoes = buildVetoesFromInput("vetoGuideList");
-  const profile = { name, basics, maxMonths, assets, skillGaps, vetoes, intent };
-  enterProfile(profile);
+function backToOnboarding(){
+  document.getElementById("mainApp").classList.add("hidden");
+  document.getElementById("onboarding").classList.remove("hidden");
+  const nav = document.getElementById("bottomNav");
+  if(nav) nav.classList.add("hidden");
+  try{ document.body.classList.remove("has-nav"); }catch(e){}
+  wzPrefill();   /* 回填已保存的简历 / 红线 / 不喜欢内容 */
+  wzGo(1);
+}
+function clearAll(){
+  if(!confirm("确定清空本地画像并重新填写？")) return;
+  localStorage.removeItem("jdfit_profile");
+  localStorage.removeItem("zhijue_profile");
+  PROFILE = null;
+  wzRed = [];
+  wzDis = [];
+  renderWzAll();
+  backToOnboarding();
 }
 
 function enterProfile(p){
@@ -834,21 +1016,8 @@ function enterProfile(p){
   renderHistory();
   renderShortlist();
   renderDashboard();
+  renderResumeList();
   showTab("analyze");
-}
-function backToOnboarding(){
-  document.getElementById("mainApp").classList.add("hidden");
-  document.getElementById("onboarding").classList.remove("hidden");
-  const nav = document.getElementById("bottomNav");
-  if(nav) nav.classList.add("hidden");
-  try{ document.body.classList.remove("has-nav"); }catch(e){}
-  renderVetoGuides("vetoGuideList", PROFILE ? PROFILE.vetoes : []);
-}
-function clearAll(){
-  if(!confirm("确定清空本地画像并重新填写？")) return;
-  localStorage.removeItem("jdfit_profile");
-  PROFILE = null;
-  backToOnboarding();
 }
 
 /* ---------- 画像导出 / 导入 ---------- */
@@ -1755,10 +1924,14 @@ function showTab(name){
 
 /* ---------- 启动 ---------- */
 window.addEventListener("DOMContentLoaded", ()=>{
-  renderVetoGuides("vetoGuideList", PROFILE ? PROFILE.vetoes : []);
+  /* 向导初始化：渲染预设标签，Step 1 起步 */
+  renderWzAll();
+  wzGo(1);
   renderResumeList();
   populateStaticSelects();
-  if(PROFILE){
+  /* 页面加载逻辑：profileCompleted 为 true（或已有引擎画像）→ 直接进主应用（默认 JD 分析页） */
+  const cfg = loadWizardConfig();
+  if(PROFILE || (cfg && cfg.profileCompleted)){
     document.getElementById("onboarding").classList.add("hidden");
     document.getElementById("mainApp").classList.remove("hidden");
     const nav = document.getElementById("bottomNav");

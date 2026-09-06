@@ -6,7 +6,7 @@ let code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // strip DOMContentLoaded listener to avoid runtime DOM dependency
 code = code.replace(/window\.addEventListener[\s\S]*$/, "");
 // expose const declarations to sandbox global
-code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.DEFAULT_CATEGORIES=DEFAULT_CATEGORIES;this.HIST_STATUS=HIST_STATUS;this.STATUS_MIGRATE=STATUS_MIGRATE;}catch(e){}";
+code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.DEFAULT_CATEGORIES=DEFAULT_CATEGORIES;this.HIST_STATUS=HIST_STATUS;this.STATUS_MIGRATE=STATUS_MIGRATE;this.WZ_RED_PRESETS=WZ_RED_PRESETS;this.WZ_DIS_PRESETS=WZ_DIS_PRESETS;}catch(e){}";
 
 // fake DOM + localStorage
 const store = {};
@@ -225,7 +225,6 @@ const newResumeDraft = exportFn("newResumeDraft");
 const loadResumeToEditor = exportFn("loadResumeToEditor");
 const deleteResume = exportFn("deleteResume");
 const copyResumeText = exportFn("copyResumeText");
-const fillPasteFromBank = exportFn("fillPasteFromBank");
 sandbox.localStorage.setItem("jdfit_resumes", JSON.stringify([{id:1, name:"通用版", text:"姓名：测试", updatedAt:"2026-08-31 00:00"}]));
 assert("loadResumes reads 1 item", loadResumes().length === 1);
 saveResumes([{id:2, name:"运营版", text:"x"}, {id:3, name:"BA版", text:"y"}]);
@@ -246,11 +245,6 @@ setVal("resumeText", "updated text");
 saveResume();
 assert("saveResume updates in place (no new item)", loadResumes().length === 3);
 assert("text updated", loadResumes().find(r => r.id === savedId).text === "updated text");
-// fill onboarding paste tab from bank
-fillPasteFromBank(String(savedId));
-assert("fillPasteFromBank fills p_resume", elems["p_resume"].value === "updated text");
-fillPasteFromBank("");
-assert("fillPasteFromBank ignores empty", elems["p_resume"].value === "updated text");
 // empty text rejected
 newResumeDraft();
 setVal("resumeName", "空文本");
@@ -353,7 +347,7 @@ assert("reasons mention auto shortlist", h4[0].reasons.some(r=>r.includes("待�
 
 console.log("=== Test 13: version + 底部导航4标签结构 ===");
 const code3 = fs.readFileSync("index.html", "utf8");
-assert("footer shows 职觉 v1.0", code3.includes("职觉 v1.0"));
+assert("footer shows 职觉 v1.1", code3.includes("职觉 v1.1"));
 assert("brand is 职觉", code3.includes("<title>职觉") && code3.includes("</span> 职觉</h1>"));
 assert("no JD适配判断器 branding remains", !code3.includes("JD适配判断器"));
 assert("landing tab is analyze (画像配置完成即进JD分析页)", code3.includes('showTab("analyze")'));
@@ -550,31 +544,140 @@ assert("guessJDTitle empty for long first line", guessJDTitle("这是一个特�
 assert("guessJDTitle empty for empty text", guessJDTitle("") === "");
 assert("guessJDTitle skips blank lines", guessJDTitle("\n\n  \n增长运营实习生\n负责增长策略。") === "增长运营实习生");
 
-console.log("=== Test 17: 引导页改为上传简历（删引导填写） ===");
-assert("guide tab removed", !code3.includes('id="tabGuide"'));
-assert("guide pane removed", !code3.includes('id="paneGuide"'));
-assert("no g_ guide inputs remain", !/id="g_[a-z]+"/.test(code3));
-assert("paste tab is default active", code3.includes('class="tab active" id="tabPaste"'));
-assert("paste pane is default active", code3.includes('class="tabpane active" id="panePaste"'));
-assert("upload entry in onboarding pane", code3.includes('id="p_file"'));
-assert("p_file accepts pdf/docx/txt", code3.includes('id="p_file" accept=".pdf,.docx,.txt"'));
-assert("p_file wired to handleResumeFile with target", code3.includes("handleResumeFile(this,'p_resume',null,'p_uploadMsg')"));
-assert("p_uploadMsg span present", code3.includes('id="p_uploadMsg"'));
-assert("tagline mentions two ways", code3.includes("上传简历自动生成") && code3.includes("两种方式"));
-assert("no stale guide wording", !code3.includes("✍️ 引导填写"));
-assert("buildProfile no guide branch", !code3.split("function buildProfile")[1].split("function enterProfile")[0].includes("activeTab"));
-assert("buildProfile reads p_resume", code3.split("function buildProfile")[1].split("function enterProfile")[0].includes('val("p_resume")'));
-assert("switchTab only paste/import", !code3.split("function switchTab")[1].split("\n}")[0].includes('"guide"'));
-// buildProfile: 空简历给出提示
-setVal("p_resume", "");
-setVal("p_intent", "");
-sandbox.buildProfile();
-assert("buildProfile warns on empty resume", elems["buildMsg"] ? true : true); // msg() 写入 buildMsg 元素，无内容时应中止
-assert("profile not created on empty", sandbox.localStorage.getItem("jdfit_profile") === null || true);
-// handleResumeFile 泛化：非 resumeText 目标走简化提示分支
-assert("handleResumeFile has target param", code3.includes("async function handleResumeFile(input, targetId, nameId, msgId)"));
-assert("generic branch mentions 生成画像 check", code3.includes("再点「生成画像」"));
-assert("banner branch still for resumeText", code3.includes('target === "resumeText"'));
+console.log("=== Test 17: 画像配置向导（Step 1-4，原版职觉规格） ===");
+// 结构：4 步向导替代旧 tabs/单页表单
+assert("old paste/import tabs removed", !code3.includes('id="tabPaste"') && !code3.includes('id="panePaste"'));
+assert("old buildProfile removed", !code3.includes("function buildProfile"));
+assert("old switchTab removed", !code3.includes("function switchTab"));
+assert("old fillPasteFromBank removed", !code3.includes("function fillPasteFromBank"));
+assert("old vetoGuideList removed from onboarding", !code3.includes('id="vetoGuideList"'));
+assert("onboarding card present", code3.includes('id="onboarding"'));
+// Step 1 引导页
+assert("Step1 present", code3.includes('id="wz1"'));
+assert("brand title 职觉 · 职业画像", code3.includes("职觉 · 职业画像"));
+assert("Step1 subtitle present", code3.includes("3 步建立你的职业偏好画像，之后每次 JD 分析都基于你的个人设定"));
+assert("开始创建 button", code3.includes(">开始创建<"));
+// Step 2 导入简历
+assert("Step2 present", code3.includes('id="wz2"'));
+assert("Step2 title", code3.includes("导入你的简历"));
+assert("drop zone present", code3.includes('id="wzDrop"'));
+assert("drop zone supports drag", code3.includes("ondragover") && code3.includes("ondrop"));
+assert("wzFile accepts docx/pdf/txt", code3.includes('id="wzFile" accept=".docx,.pdf,.txt"'));
+assert("wzFile wired to wzResume", code3.includes("handleResumeFile(this,'wzResume',null,'wzUploadMsg')"));
+assert("drop handler present", code3.includes("wzHandleDrop(event)"));
+assert("Step2 next button", code3.includes("wzNext2()"));
+// Step 3 红线关键词
+assert("Step3 present", code3.includes('id="wz3"'));
+assert("Step3 title", code3.includes("设置红线关键词"));
+assert("Step3 subtitle marks 不推荐", code3.includes("自动标记为「不推荐」"));
+assert("red presets container", code3.includes('id="wzRedPresets"'));
+assert("red selected container", code3.includes('id="wzRedSel"'));
+assert("red add input present", code3.includes('id="wzRedInput"'));
+// Step 4 不喜欢的工作内容
+assert("Step4 present", code3.includes('id="wz4"'));
+assert("Step4 title", code3.includes("设置你不喜欢的工作内容"));
+assert("dis presets container", code3.includes('id="wzDisPresets"'));
+assert("dis selected container", code3.includes('id="wzDisSel"'));
+assert("完成创建画像 button", code3.includes("wzFinish()"));
+// 进度条 + 卡片样式
+assert("progress bar present", code3.includes('id="wzBar"'));
+assert("step counter present", code3.includes('id="wzStepNum"'));
+assert("wizard card max-width 800px", code3.includes("max-width:800px"));
+assert("progress bar transition", code3.includes("transition:width"));
+assert("step fade animation", code3.includes("@keyframes wzfade"));
+// 预设标签内容
+const WZ_RED_PRESETS = exportFn("WZ_RED_PRESETS");
+const WZ_DIS_PRESETS = exportFn("WZ_DIS_PRESETS");
+assert("29 red presets", WZ_RED_PRESETS.length === 29);
+assert("key red presets present", ["理工科优先","硕士及以上学历","Python/SQL/Excel","接受加班","自主学习能力","有公众号/小红书/知乎等平台运营经验"].every(t=>WZ_RED_PRESETS.includes(t)));
+assert("11 dislike presets", WZ_DIS_PRESETS.length === 11);
+assert("key dislike presets present", ["频繁出差","外包岗位","大小周","团建","群消息@所有人"].every(t=>WZ_DIS_PRESETS.includes(t)));
+// 行为：步骤切换 + 进度条
+const wzGo = exportFn("wzGo");
+wzGo(3);
+assert("wzGo sets progress 75%", elems["wzBar"].style.width === "75%");
+assert("wzGo sets step counter", elems["wzStepNum"].textContent === "步骤 3 / 4");
+wzGo(4);
+assert("wzGo sets progress 100%", elems["wzBar"].style.width === "100%");
+// 行为：预设标签切换
+const wzTogglePreset = exportFn("wzTogglePreset");
+wzTogglePreset("red", "接受加班");
+assert("preset toggled on renders selected chip", elems["wzRedSel"]._html.includes("接受加班"));
+assert("preset chip gets on class", elems["wzRedPresets"]._html.includes("wz-tag on"));
+wzTogglePreset("red", "接受加班");
+assert("preset toggled off removes chip", !elems["wzRedSel"]._html.includes("接受加班"));
+// 行为：手动添加（逗号/顿号分隔 + 去重）
+const wzAddRed = exportFn("wzAddRed");
+const wzAddDis = exportFn("wzAddDis");
+const wzRemoveTag = exportFn("wzRemoveTag");
+setVal("wzRedInput", "驻场开发, 需自带电脑");
+wzAddRed();
+assert("wzAddRed parses comma-separated", elems["wzRedSel"]._html.includes("驻场开发") && elems["wzRedSel"]._html.includes("需自带电脑"));
+assert("wzAddRed clears input", elems["wzRedInput"].value === "");
+setVal("wzRedInput", "驻场开发");
+wzAddRed();
+assert("wzAddRed dedupes", (elems["wzRedSel"]._html.match(/驻场开发/g)||[]).length === 1);
+wzRemoveTag("red", 0);
+assert("wzRemoveTag removes by index", !elems["wzRedSel"]._html.includes("驻场开发"));
+setVal("wzDisInput", "长期驻场");
+wzAddDis();
+assert("wzAddDis adds content", elems["wzDisSel"]._html.includes("长期驻场"));
+// 行为：Step2 校验（空简历不放行，进度不变）
+const wzNext2 = exportFn("wzNext2");
+setVal("wzResume", "");
+wzNext2();
+assert("wzNext2 blocks empty resume", elems["wzBar"].style.width === "100%");
+assert("wzNext2 shows warning", elems["wzUploadMsg"]._text.includes("请先上传"));
+setVal("wzResume", "姓名：测试 五道口职业技术学院 用户运营经历 数据分析 竞品分析 从0到1 方法论沉淀 用户分层 触达转化");
+wzNext2();
+assert("wzNext2 passes with resume (75%)", elems["wzBar"].style.width === "75%");
+// 行为：wzFinish 全链路（规格存储 + 引擎画像 + 简历入储备区）
+sandbox.localStorage.removeItem("zhijue_profile");
+sandbox.localStorage.removeItem("jdfit_profile");
+const wzFinish = exportFn("wzFinish");
+wzFinish();
+const savedCfg = JSON.parse(sandbox.localStorage.getItem("zhijue_profile"));
+assert("wzFinish saves spec storage (profileCompleted)", savedCfg.profileCompleted === true);
+assert("spec storage has resume", savedCfg.profile.resume.includes("用户运营"));
+assert("spec storage redLines", JSON.stringify(savedCfg.profile.redLines) === JSON.stringify(["需自带电脑"]));
+assert("spec storage dislikes", JSON.stringify(savedCfg.profile.dislikes) === JSON.stringify(["长期驻场"]));
+assert("engine profile created", loadProfile() !== null);
+assert("engine vetoes custom veto mode", loadProfile().vetoes.some(v=>v.cat==="custom" && v.mode==="veto" && v.keywords.includes("需自带电脑")));
+assert("engine vetoes boringWork warn mode", loadProfile().vetoes.some(v=>v.cat==="boringWork" && v.mode==="warn" && v.keywords.includes("长期驻场")));
+assert("resume synced to bank as 画像简历", loadResumes().some(r=>r.name==="画像简历" && r.text.includes("用户运营")));
+assert("wizard resume feeds AI analysis", exportFn("currentResumeTextForAI")().includes("用户运营"));
+assert("assets extracted from resume", loadProfile().assets.length > 0);
+// 行为：wzFinish 空简历守卫（跳回 Step 2）
+setVal("wzResume", "");
+wzFinish();
+assert("wzFinish empty resume returns to step 2", elems["wzStepNum"].textContent === "步骤 2 / 4");
+// 行为：backToOnboarding 回填（从规格存储）
+const backToOnboarding = exportFn("backToOnboarding");
+setVal("wzResume", "占位");
+backToOnboarding();
+assert("backToOnboarding prefills resume from config", elems["wzResume"].value.includes("用户运营"));
+assert("backToOnboarding restores red chips", elems["wzRedSel"]._html.includes("需自带电脑"));
+assert("backToOnboarding restores dis chips", elems["wzDisSel"]._html.includes("长期驻场"));
+assert("backToOnboarding resets to step 1", elems["wzStepNum"].textContent === "步骤 1 / 4");
+// 行为：旧画像兼容（无 zhijue_profile 时从 vetoes 派生）
+sandbox.localStorage.removeItem("zhijue_profile");
+saveProfileObj({name:"L", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[
+  {cat:"custom", label:"红线关键词", keywords:"纯电销", mode:"veto"},
+  {cat:"boringWork", label:"不喜欢", keywords:"团建", mode:"warn"}
+]});
+backToOnboarding();
+assert("legacy profile derives redLines", elems["wzRedSel"]._html.includes("纯电销"));
+assert("legacy profile derives dislikes", elems["wzDisSel"]._html.includes("团建"));
+// 行为：clearAll 双键清理
+const clearAll = exportFn("clearAll");
+sandbox.localStorage.setItem("zhijue_profile", JSON.stringify({profile:{resume:"x",redLines:[],dislikes:[]},profileCompleted:true}));
+clearAll();
+assert("clearAll removes zhijue_profile", sandbox.localStorage.getItem("zhijue_profile") === null);
+assert("clearAll removes jdfit_profile", sandbox.localStorage.getItem("jdfit_profile") === null);
+assert("clearAll resets to step 1", elems["wzStepNum"].textContent === "步骤 1 / 4");
+// 文件上传泛化保留
+assert("handleResumeFileObj is function", typeof exportFn("handleResumeFileObj") === "function");
+assert("handleResumeFile keeps signature", code3.includes("async function handleResumeFile(input, targetId, nameId, msgId)"));
 
 console.log("=== Test 18: 行业分类 + 待投递列表 + 仪表盘 ===");
 // 行业分类：8个默认 + localStorage 覆盖
@@ -706,9 +809,9 @@ console.log("=== Test 19: analyzeJD 开始分析全链路（后端调用 + 降�
   setVal("jdText", "太短");
   await sandbox.analyzeJD();
   assert("short JD rejected (no new record)", JSON.parse(sandbox.localStorage.getItem("jdfit_history")).length === 1);
-  // --- 无简历时提示 ---
+  // --- 无简历时提示（currentResumeId 是 vm 内部 let，无法外部覆盖；清空简历库使其查不到） ---
   setVal("resumeText", "");
-  sandbox.currentResumeId = null;
+  sandbox.localStorage.setItem("jdfit_resumes", "[]");
   sandbox.fetch = async () => ({ok: true, json: async () => ({ok: true, report: {result: "推荐"}})});
   setVal("jdText", "商业分析实习生\n负责策略复盘与洞察产出，JD内容足够长超过二十个字的要求已满足。");
   await sandbox.analyzeJD();
