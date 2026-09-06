@@ -524,6 +524,44 @@ const DOMAIN_VOCAB = [
 let PROFILE = loadProfile();
 let lastAnalysis = null;
 
+/* ---------- 启动清理：行业词不属于红线（误选会否决对应行业全部JD，曾导致所有分析0分） ---------- */
+const WZ_INDUSTRY_WORDS = ["互联网","金融","咨询","医药"];
+(function sanitizeIndustryRedLines(){
+  const BAD = WZ_INDUSTRY_WORDS;
+  /* 1) 清理向导规格存储 zhujue_profile 的 redLines */
+  try{
+    const s = localStorage.getItem("zhijue_profile");
+    if(s){
+      const cfg = JSON.parse(s);
+      if(cfg && cfg.profile && Array.isArray(cfg.profile.redLines)){
+        const cleaned = cfg.profile.redLines.filter(t => !BAD.includes(t));
+        if(cleaned.length !== cfg.profile.redLines.length){
+          cfg.profile.redLines = cleaned;
+          localStorage.setItem("zhijue_profile", JSON.stringify(cfg));
+        }
+      }
+    }
+  }catch(e){}
+  /* 2) 清理画像 vetoes 里否决级关键词 */
+  if(PROFILE && Array.isArray(PROFILE.vetoes)){
+    let changed = false;
+    PROFILE.vetoes = PROFILE.vetoes.map(v => {
+      if(v && v.mode !== "warn" && typeof v.keywords === "string" && v.keywords){
+        const parts = v.keywords.split(/[，,、;\n]/).map(x=>x.trim()).filter(Boolean);
+        const kept = parts.filter(t => !BAD.includes(t));
+        if(kept.length !== parts.length){
+          changed = true;
+          return Object.assign({}, v, {keywords: kept.join("，")});
+        }
+      }
+      return v;
+    });
+    if(changed){
+      try{ localStorage.setItem("jdfit_profile", JSON.stringify(PROFILE)); }catch(e){}
+    }
+  }
+})();
+
 /* ---------- 存储（仅本地） ---------- */
 function loadProfile(){
   try{
@@ -754,7 +792,7 @@ function nowStr(){
 
 /* ---------- 画像配置向导（Step 1-4） ---------- */
 /* Step 3 预设红线关键词 */
-const WZ_RED_PRESETS = ["理工科优先","XX专业优先","硕士及以上学历","有相关实习经验","Python/SQL/Excel","熟悉数据分析工具","有建模能力","有编程基础","熟练使用办公软件","有运营账号经验","有公众号/小红书/知乎等平台运营经验","有项目经验","有作品集","能承受高强度工作","能接受出差","能快速到岗","每周坐班X天","接受加班","互联网","金融","咨询","医药","甲方/乙方经验","熟悉行业政策","能独立完成","抗压能力强","沟通能力强","结果导向","自主学习能力"];
+const WZ_RED_PRESETS = ["理工科优先","XX专业优先","硕士及以上学历","有相关实习经验","Python/SQL/Excel","熟悉数据分析工具","有建模能力","有编程基础","熟练使用办公软件","有运营账号经验","有公众号/小红书/知乎等平台运营经验","有项目经验","有作品集","能承受高强度工作","能接受出差","能快速到岗","每周坐班X天","接受加班","甲方/乙方经验","熟悉行业政策","能独立完成","抗压能力强","沟通能力强","结果导向","自主学习能力"];
 /* Step 4 预设不喜欢的工作内容 */
 const WZ_DIS_PRESETS = ["频繁出差","无晋升通道","不缴纳公积金","外包岗位","试用期辞退","不签合同","无条件加班","群消息@所有人","团建","单休","大小周"];
 

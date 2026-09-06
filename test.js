@@ -6,7 +6,7 @@ let code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // strip DOMContentLoaded listener to avoid runtime DOM dependency
 code = code.replace(/window\.addEventListener[\s\S]*$/, "");
 // expose const declarations to sandbox global
-code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.DEFAULT_CATEGORIES=DEFAULT_CATEGORIES;this.HIST_STATUS=HIST_STATUS;this.STATUS_MIGRATE=STATUS_MIGRATE;this.WZ_RED_PRESETS=WZ_RED_PRESETS;this.WZ_DIS_PRESETS=WZ_DIS_PRESETS;}catch(e){}";
+code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.DEFAULT_CATEGORIES=DEFAULT_CATEGORIES;this.HIST_STATUS=HIST_STATUS;this.STATUS_MIGRATE=STATUS_MIGRATE;this.WZ_RED_PRESETS=WZ_RED_PRESETS;this.WZ_DIS_PRESETS=WZ_DIS_PRESETS;this.WZ_INDUSTRY_WORDS=WZ_INDUSTRY_WORDS;}catch(e){}";
 
 // fake DOM + localStorage
 const store = {};
@@ -588,8 +588,10 @@ assert("step fade animation", code3.includes("@keyframes wzfade"));
 // 预设标签内容
 const WZ_RED_PRESETS = exportFn("WZ_RED_PRESETS");
 const WZ_DIS_PRESETS = exportFn("WZ_DIS_PRESETS");
-assert("29 red presets", WZ_RED_PRESETS.length === 29);
+assert("25 red presets", WZ_RED_PRESETS.length === 25);
 assert("key red presets present", ["理工科优先","硕士及以上学历","Python/SQL/Excel","接受加班","自主学习能力","有公众号/小红书/知乎等平台运营经验"].every(t=>WZ_RED_PRESETS.includes(t)));
+assert("industry words removed from red presets", ["互联网","金融","咨询","医药"].every(t=>!WZ_RED_PRESETS.includes(t)));
+assert("industry words constant defined", exportFn("WZ_INDUSTRY_WORDS").length === 4);
 assert("11 dislike presets", WZ_DIS_PRESETS.length === 11);
 assert("key dislike presets present", ["频繁出差","外包岗位","大小周","团建","群消息@所有人"].every(t=>WZ_DIS_PRESETS.includes(t)));
 // 行为：步骤切换 + 进度条
@@ -617,6 +619,50 @@ assert("wzAddRed clears input", elems["wzRedInput"].value === "");
 setVal("wzRedInput", "驻场开发");
 wzAddRed();
 assert("wzAddRed dedupes", (elems["wzRedSel"]._html.match(/驻场开发/g)||[]).length === 1);
+
+console.log("=== Test 17b: 启动清理行业词红线（0分否决bug修复） ===");
+// 用脏数据重建沙箱：画像 vetoes 与向导 redLines 均含行业词
+const dirtyStore = {};
+dirtyStore["jdfit_profile"] = JSON.stringify({
+  name: "TestUser", basics: "x", maxMonths: 6, assets: [], skillGaps: [],
+  vetoes: [
+    {cat:"custom", label:"红线关键词", keywords:"互联网, 外包岗位, 金融", mode:"veto"},
+    {cat:"boringWork", label:"不喜欢的工作内容", keywords:"互联网, 团建", mode:"warn"}
+  ], intent: ""
+});
+dirtyStore["zhijue_profile"] = JSON.stringify({
+  profileCompleted: true,
+  profile: {resume: "简历内容足够长足够长足够长", redLines: ["互联网","咨询","频繁出差"], dislikes: ["团建"]}
+});
+const dirtySandbox = {
+  localStorage: {
+    getItem: k => (k in dirtyStore) ? dirtyStore[k] : null,
+    setItem: (k,v) => { dirtyStore[k] = v; },
+    removeItem: k => { delete dirtyStore[k]; }
+  },
+  document: {
+    getElementById: () => fakeEl("any"),
+    createElement: () => fakeEl("dynamic"),
+    querySelector: () => fakeEl("q"),
+    body: { appendChild(){}, removeChild(){} }
+  },
+  window: { addEventListener(){} },
+  setTimeout: () => {}, alert: () => {}, confirm: () => true,
+  navigator: { clipboard: { writeText: async () => {} } },
+  JSON, RegExp, Math, parseInt, parseFloat, String, Date, console
+};
+vm.createContext(dirtySandbox);
+vm.runInContext(code, dirtySandbox);
+const cleanWiz = JSON.parse(dirtyStore["zhijue_profile"]);
+assert("wizard redLines industry words removed", !cleanWiz.profile.redLines.includes("互联网") && !cleanWiz.profile.redLines.includes("咨询"));
+assert("wizard redLines keeps valid words", cleanWiz.profile.redLines.includes("频繁出差"));
+assert("wizard dislikes untouched", cleanWiz.profile.dislikes.includes("团建"));
+const cleanProf = JSON.parse(dirtyStore["jdfit_profile"]);
+const vetoEntry = cleanProf.vetoes.find(v => v.mode === "veto");
+assert("profile veto keywords industry words removed", !vetoEntry.keywords.includes("互联网") && !vetoEntry.keywords.includes("金融"));
+assert("profile veto keeps 外包岗位", vetoEntry.keywords.includes("外包岗位"));
+const warnEntry = cleanProf.vetoes.find(v => v.mode === "warn");
+assert("warn-level keywords untouched (行业词仅清否决级)", warnEntry.keywords.includes("互联网"));
 wzRemoveTag("red", 0);
 assert("wzRemoveTag removes by index", !elems["wzRedSel"]._html.includes("驻场开发"));
 setVal("wzDisInput", "长期驻场");
