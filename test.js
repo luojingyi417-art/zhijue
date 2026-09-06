@@ -6,7 +6,7 @@ let code = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 // strip DOMContentLoaded listener to avoid runtime DOM dependency
 code = code.replace(/window\.addEventListener[\s\S]*$/, "");
 // expose const declarations to sandbox global
-code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.profileRedLines=profileRedLines;this.profileDislikes=profileDislikes;}catch(e){}";
+code += "\n;try{this.VETO_CATEGORIES=VETO_CATEGORIES;this.AI_BACKEND_URL=AI_BACKEND_URL;this.RESUME_LIB_URLS=RESUME_LIB_URLS;this.cleanResumeText=cleanResumeText;this.DEFAULT_CATEGORIES=DEFAULT_CATEGORIES;this.HIST_STATUS=HIST_STATUS;this.STATUS_MIGRATE=STATUS_MIGRATE;}catch(e){}";
 
 // fake DOM + localStorage
 const store = {};
@@ -275,45 +275,114 @@ assert("jdCompany cleared", elems["jdCompany"].value === "");
 assert("jdText cleared", elems["jdText"].value === "");
 assert("result element hidden (classList.add called, no throw)", true);
 
-console.log("=== Test 12: history 投递状态 + 备注 ===");
+console.log("=== Test 12: history 状态四态 + 旧数据迁移 + 待投递 ===");
 const setHistStatus = exportFn("setHistStatus");
 const setHistNote = exportFn("setHistNote");
 const escAttr = exportFn("escAttr");
+const migrateHistory = exportFn("migrateHistory");
+const histScore = exportFn("histScore");
+const HIST_STATUS = exportFn("HIST_STATUS");
+const STATUS_MIGRATE = exportFn("STATUS_MIGRATE");
+// 四态与迁移映射
+assert("HIST_STATUS is 4 states", HIST_STATUS.join(",") === "待投递,已投递,不投递,已放弃");
+assert("migrate maps 未投递→待投递", STATUS_MIGRATE["未投递"] === "待投递");
+assert("migrate maps 面试中→已投递", STATUS_MIGRATE["面试中"] === "已投递");
+assert("migrate maps 已结束→已放弃", STATUS_MIGRATE["已结束"] === "已放弃");
+assert("migrate maps 不投→不投递", STATUS_MIGRATE["不投"] === "不投递");
+assert("migrate maps 已投递→已投递", STATUS_MIGRATE["已投递"] === "已投递");
+// 旧五态数据迁移
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([
+  {id:1, status:"未投递", total:8},
+  {id:2, status:"面试中", total:9},
+  {id:3, status:"已结束", total:7},
+  {id:4, status:"不投", total:3},
+  {id:5, status:"已投递", total:9}
+]));
+migrateHistory();
+const mh = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
+assert("迁移后全部归入四态", mh.every(h=>HIST_STATUS.indexOf(h.status) >= 0));
+assert("迁移补全 isInShortlist 布尔", mh.every(h=>typeof h.isInShortlist === "boolean"));
+assert("未投递→待投递", mh[0].status === "待投递");
+assert("面试中→已投递", mh[1].status === "已投递");
+assert("不投→不投递", mh[3].status === "不投递");
+// histScore 双制分数归一
+assert("histScore uses score field (0-100)", histScore({score: 82}) === 82);
+assert("histScore converts total/12 to 0-100", histScore({total: 9}) === 75);
+assert("histScore rounds half up", histScore({total: 8.1}) === 68);
+// setHistStatus / setHistNote
 sandbox.localStorage.setItem("jdfit_history", JSON.stringify([{
-  id: 101, date: "2026-08-31 00:00", title: "测试岗", company: "某司",
+  id: 101, date: "2026-09-03 00:00", title: "测试岗", company: "某司",
   total: 8, verdictLabel: "投！优先处理", verdictEmoji: "🟢", verdictCls: "green",
   hasVeto: false, dims: [], vetoResults: [], jdSnippet: "x"
 }]));
 setHistStatus(101, "已投递");
 assert("status saved to storage", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].status === "已投递");
 setHistStatus(101, "无效状态值");
-assert("invalid status falls back to 未投递", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].status === "未投递");
+assert("invalid status falls back to 待投递", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].status === "待投递");
 setHistNote(101, "2026-09-01 已投BOSS直聘");
 assert("note saved to storage", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].note === "2026-09-01 已投BOSS直聘");
 setHistNote(101, "x".repeat(300));
 assert("note capped at 200 chars", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].note.length === 200);
 setHistStatus(999, "已投递"); setHistNote(999, "x"); // unknown id, no crash
 assert("unknown id no crash", true);
-// new analysis -> history item has default status/note
-sandbox.localStorage.setItem("jdfit_history", JSON.stringify([]));
-setVal("jdTitle", "状态默认测试");
-setVal("jdCompany", "");
-setVal("jdText", "商业分析实习生。负责策略与洞察复盘。");
-sandbox.analyze();
-const h3 = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
-assert("new history item has default status 未投递", h3[0].status === "未投递");
-assert("new history item has empty note", h3[0].note === "");
 // escAttr escapes quotes for attribute injection safety
 assert("escAttr escapes double quotes", escAttr('a"b<c') === 'a&quot;b&lt;c');
 assert("escAttr escapes single quotes", escAttr("a'b").indexOf("&#39;") >= 0);
+// new analysis -> history item has new-format fields
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([]));
+setVal("jdCompany", "");
+setVal("jdText", "商业分析实习生\n负责策略与洞察复盘，含数据分析产出。");
+sandbox.analyze();
+const h3 = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
+assert("new history item has default status 待投递", h3[0].status === "待投递");
+assert("new history item has empty note", h3[0].note === "");
+assert("new history item has id/timestamp", typeof h3[0].id === "number" && typeof h3[0].timestamp === "number");
+assert("new history item position guessed from JD first line", h3[0].position === "商业分析实习生" && "industry" in h3[0] && typeof h3[0].jd === "string");
+assert("new history item has 0-100 score", h3[0].score === Math.round(h3[0].total / 12 * 100));
+assert("new history item has reasons array (3条)", Array.isArray(h3[0].reasons) && h3[0].reasons.length === 3);
+assert("new history item has isInShortlist boolean", typeof h3[0].isInShortlist === "boolean");
+assert("score<75 not auto shortlisted", h3[0].score < 75 && h3[0].isInShortlist === false);
+// 高分（percent>=75）自动入待投递
+saveProfileObj({name:"W3", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[], weights:[2,0,0,0,0,0]});
+setVal("jdCompany", "高分司");
+setVal("jdText", "商业分析实习生\n负责策略。");
+sandbox.analyze();
+const h4 = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
+assert("percent>=75 auto shortlisted", h4[0].score === 100 && h4[0].isInShortlist === true);
+assert("reasons mention auto shortlist", h4[0].reasons.some(r=>r.includes("待投递")));
 
-console.log("=== Test 13: version + privacy ===");
+console.log("=== Test 13: version + 底部导航4标签结构 ===");
 const code3 = fs.readFileSync("index.html", "utf8");
-assert("footer shows v0.8", code3.includes("JD适配判断器 v0.8"));
-assert("resume card present", code3.includes("id=\"resumeCard\""));
+assert("footer shows 职觉 v1.0", code3.includes("职觉 v1.0"));
+assert("brand is 职觉", code3.includes("<title>职觉") && code3.includes("</span> 职觉</h1>"));
+assert("no JD适配判断器 branding remains", !code3.includes("JD适配判断器"));
+assert("landing tab is analyze (画像配置完成即进JD分析页)", code3.includes('showTab("analyze")'));
+assert("bottom nav present", code3.includes("id=\"bottomNav\""));
+["dash","analyze","shortlist","history"].forEach(k=>{
+  assert("pane-"+k+" present", code3.includes("id=\"pane-"+k+"\""));
+  assert("nav-"+k+" present", code3.includes("id=\"nav-"+k+"\""));
+});
+assert("primary blue is #2563EB", code3.includes("#2563EB"));
+assert("statGrid present (仪表盘统计卡)", code3.includes("id=\"statGrid\""));
+assert("recentBox present (最近检测)", code3.includes("id=\"recentBox\""));
+assert("jdIndustry select present", code3.includes("id=\"jdIndustry\""));
+assert("slStatusFilter present", code3.includes("id=\"slStatusFilter\""));
+assert("slIndustryFilter present", code3.includes("id=\"slIndustryFilter\""));
+assert("shortlistBox present", code3.includes("id=\"shortlistBox\""));
+assert("histStatusFilter present", code3.includes("id=\"histStatusFilter\""));
+assert("histKeyFilter present", code3.includes("id=\"histKeyFilter\""));
+assert("resume card present (moved to 仪表盘)", code3.includes("resumeCard"));
+const dashChunk = code3.split('id="pane-dash"')[1].split('id="pane-analyze"')[0];
+assert("resumeCard now lives in dash pane", dashChunk.includes('id="resumeCard"'));
+assert("analyze pane no longer holds resumeCard", !code3.split('id="pane-analyze"')[1].split('id="pane-shortlist"')[0].includes('id="resumeCard"'));
+assert("localResult fallback area present", code3.includes('id="localResult"'));
+assert("analyzeBtn present (开始分析)", code3.includes('id="analyzeBtn"'));
+assert("jdCompany input present", code3.includes('id="jdCompany"'));
+assert("jdTitle input removed from analyze page", !code3.includes('id="jdTitle"'));
 assert("clear button present", code3.includes("clearJDInputs"));
 assert("status select present", code3.includes("setHistStatus"));
 assert("note input present", code3.includes("setHistNote"));
+assert("showTab function present", code3.includes("function showTab"));
 assert("no 罗景怡 (privacy)", !code3.includes("罗景怡"));
 assert("no HCR (privacy)", !code3.includes("HCR"));
 assert("no 中央财经 (privacy)", !code3.includes("中央财经"));
@@ -322,63 +391,111 @@ console.log("=== Test 14: AI 深度分析模块 ===");
 const AI_BACKEND_URL = exportFn("AI_BACKEND_URL");
 const buildAIReportHTML = exportFn("buildAIReportHTML");
 const currentResumeTextForAI = exportFn("currentResumeTextForAI");
+assert("AI_BACKEND_URL points to worker", AI_BACKEND_URL === "https://zhijue-backend.luojingyi417.workers.dev");
+assert("analyzeJD function exists", typeof exportFn("analyzeJD") === "function");
+assert("aiBox rendered in HTML", code3.includes('id="aiBox"'));
+assert("optBox rendered in HTML", code3.includes('id="optBox"'));
+assert("optBtn rendered in HTML", code3.includes('id="optBtn"'));
+assert("AI card has privacy notice", code3.includes("发送到你自己的后端"));
+// 四字段协议：analyzeJD 发送 {resume, jd, redLines, dislikes}
+assert("analyzeJD is async function", /async function analyzeJD/.test(code3));
+assert("analyzeJD posts to /analyze", code3.includes("AI_BACKEND_URL + \"/analyze\""));
+assert("analyzeJD body has 4 fields", code3.includes("redLines: profileRedLines(), dislikes: profileDislikes()"));
+assert("analyzeJD detects legacy report format", code3.includes("旧版报告格式"));
+assert("analyzeJD falls back to local screen", code3.includes("已降级为下方本地快筛"));
+assert("optimizeResume is async function", /async function optimizeResume/.test(code3));
+assert("optimizeResume posts to /optimize", code3.includes("AI_BACKEND_URL + \"/optimize\""));
+// profileRedLines / profileDislikes 从画像 vetoes 派生（veto→redLines, warn→dislikes）
 const profileRedLines = exportFn("profileRedLines");
 const profileDislikes = exportFn("profileDislikes");
-assert("AI_BACKEND_URL points to worker", AI_BACKEND_URL === "https://zhijue-backend.luojingyi417.workers.dev");
-assert("aiAnalyze function exists", typeof exportFn("aiAnalyze") === "function");
-assert("aiBox rendered in HTML", code3.includes('id="aiBox"'));
-assert("AI card has privacy notice", code3.includes("发送到你自己的后端"));
+saveProfileObj({name:"R", basics:"", maxMonths:6, assets:[], skillGaps:[], intent:"BA",
+  vetoes:[
+    {cat:"skillGaps", label:"技能短板", keywords:"Python, 机器学习", mode:"veto"},
+    {cat:"boringWork", label:"不喜欢的内容", keywords:"会议纪要、排版", mode:"warn"},
+    {cat:"custom", label:"其他", keywords:"外呼", mode:"veto"}
+  ]});
+assert("profileRedLines collects veto-mode keywords", JSON.stringify(profileRedLines()) === JSON.stringify(["Python","机器学习","外呼"]));
+assert("profileDislikes collects warn-mode keywords", JSON.stringify(profileDislikes()) === JSON.stringify(["会议纪要","排版"]));
+saveProfileObj({name:"R2", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[]});
+assert("profileRedLines empty when no vetoes", profileRedLines().length === 0 && profileDislikes().length === 0);
 // currentResumeTextForAI: prefers editor content, falls back to saved resume
 setVal("resumeText", "编辑区简历内容");
 assert("currentResumeTextForAI prefers editor", currentResumeTextForAI() === "编辑区简历内容");
 setVal("resumeText", "");
 sandbox.currentResumeId = null;
 assert("currentResumeTextForAI empty when nothing saved", currentResumeTextForAI() === "");
-// buildAIReportHTML renders report structure (backend v2 protocol)
+// buildAIReportHTML 渲染 v2 格式 {result, score, status, score_details, conflicts, reasons, interview_tips}
 const sampleReport = {
-  status: "正常完成", result: "推荐", score: 82.5,
-  score_details: {"技能匹配": 85, "经验相关性": 80},
-  conflicts: [{level: "中", item: "偶有加班", jd_content: "需配合项目节奏加班"}],
-  reasons: ["六维评分较高", "经历与JD对口"],
-  interview_tips: ["准备用户分层案例"]
+  result: "推荐", score: 78, status: "通过初筛",
+  score_details: {"技能匹配": 80, "经历相关": 75},
+  conflicts: [{level: "高", item: "日常含会议纪要整理", jd_content: "负责会议纪要与纪要归档"}],
+  reasons: ["技能匹配度高", "经历相关性好"],
+  interview_tips: ["准备SQL案例"]
 };
 const reportHTML = buildAIReportHTML(sampleReport);
-assert("report renders result 推荐", reportHTML.includes("推荐"));
-assert("report renders rounded score 83", reportHTML.includes("83"));
-assert("report renders score_details rows", reportHTML.includes("技能匹配") && reportHTML.includes("85"));
-assert("report renders conflicts with jd_content", reportHTML.includes("偶有加班") && reportHTML.includes("JD原文"));
-assert("report renders reasons", reportHTML.includes("经历与JD对口"));
-assert("report renders interview tips", reportHTML.includes("准备用户分层案例"));
+assert("report renders result", reportHTML.includes("推荐"));
+assert("report renders score 78", reportHTML.includes("78"));
+assert("report renders status chip", reportHTML.includes("通过初筛"));
+assert("report renders score_details rows", reportHTML.includes("技能匹配") && reportHTML.includes("80"));
+assert("report renders conflicts with JD原文", reportHTML.includes("JD原文") && reportHTML.includes("负责会议纪要与纪要归档"));
+assert("report renders reasons", reportHTML.includes("技能匹配度高"));
+assert("report renders interview tips", reportHTML.includes("准备SQL案例"));
 assert("report has human-judgment disclaimer", reportHTML.includes("AI做执行，人做判断"));
-// no conflicts renders hint
-assert("no conflicts renders hint", buildAIReportHTML({result: "可考虑", conflicts: []}).includes("未检测到"));
-// status chip class: vetoed -> miss
-assert("vetoed status chip miss", buildAIReportHTML({status: "被一票否决", result: "不推荐"}).includes('class="chip miss"'));
-// profileRedLines / profileDislikes derive from vetoes
-saveProfileObj({name:"VUser", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[
-  {mode: "veto", keywords: "外包, 加班文化"},
-  {mode: "warn", keywords: "团建、出差"}
-]});
-assert("profileRedLines from veto mode", JSON.stringify(profileRedLines()) === JSON.stringify(["外包","加班文化"]));
-assert("profileDislikes from warn mode", JSON.stringify(profileDislikes()) === JSON.stringify(["团建","出差"]));
-saveProfileObj({name:"V2", basics:"", maxMonths:6, assets:[], skillGaps:[], vetoes:[]});
-assert("profileRedLines empty when no vetoes", profileRedLines().length === 0);
-assert("profileDislikes empty when no vetoes", profileDislikes().length === 0);
-// aiAnalyze sends four fields to backend v2
-assert("aiAnalyze body includes redLines+dislikes", code3.includes("redLines: profileRedLines(), dislikes: profileDislikes()"));
-assert("aiAnalyze detects legacy backend format", code3.includes("旧版报告格式"));
+assert("report mentions auto shortlist at >=75", reportHTML.includes("75"));
+assert("result emoji: 推荐=🟢", reportHTML.includes("🟢"));
+assert("result emoji: 可考虑=🟡", buildAIReportHTML({...sampleReport, result: "可考虑"}).includes("🟡"));
+assert("result emoji: 不推荐=🔴", buildAIReportHTML({...sampleReport, result: "不推荐"}).includes("🔴"));
+assert("result emoji: unknown=⚪", buildAIReportHTML({...sampleReport, result: "随便写的"}).includes("⚪"));
 // XSS safety: report content is escaped
-const xssReport = {result: '<img src=x onerror=alert(1)>', conflicts: [], reasons: ["<script>bad()</script>"], interview_tips: [], score_details: {}};
+const xssReport = {result: '<img src=x onerror=alert(1)>', status: '<script>x</script>', score_details: {}, conflicts: [{level: "高", item: "<script>bad()</script>"}], reasons: ["<script>bad()</script>"], interview_tips: []};
 const xssHTML = buildAIReportHTML(xssReport);
 assert("XSS: script content escaped", !xssHTML.includes("<script>bad"));
 assert("XSS: img tag not executable", !xssHTML.includes("<img") && xssHTML.includes("&lt;img"));
 // edge cases
 assert("null report returns empty", buildAIReportHTML(null) === "");
 assert("empty arrays render dash", buildAIReportHTML({result: "可考虑", conflicts: [], reasons: [], interview_tips: []}).includes("—"));
-assert("result emoji: 推荐=green", buildAIReportHTML(sampleReport).includes("🟢"));
-assert("result emoji: 不推荐=red", buildAIReportHTML({...sampleReport, result: "不推荐"}).includes("🔴"));
-assert("result emoji: 可考虑=yellow", buildAIReportHTML({...sampleReport, result: "可考虑"}).includes("🟡"));
-assert("unknown result emoji: gray", buildAIReportHTML({...sampleReport, result: ""}).includes("⚪"));
+// updateHistoryWithAI: AI 结果回写历史 + >=75 自动入库
+const updateHistoryWithAI = exportFn("updateHistoryWithAI");
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([{
+  id: 501, date: "2026-09-03 00:00", title: "AI岗", company: "AI司", position: "AI岗",
+  total: 8, score: 67, status: "待投递", note: "", isInShortlist: false,
+  reasons: [], interview_tips: [], conflicts: [], resume_advice: null,
+  dims: [], vetoResults: [], jdSnippet: "jd文本"
+}]));
+vm.runInContext("lastAnalysis = {raw:'jd文本', histId:501, title:'AI岗', company:'AI司', industry:'互联网', hasVeto:false, dims:[{name:'d1',score:2,note:''},{name:'d2',score:2,note:'',hits:[]}], vetoResults:[]};", sandbox);
+updateHistoryWithAI(sampleReport);
+let hAI = JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0];
+assert("AI score 回写历史", hAI.score === 78);
+assert("AI result 回写历史", hAI.result === "推荐");
+assert("AI reasons 回写历史", hAI.reasons.length === 2);
+assert("AI interview_tips 回写历史", hAI.interview_tips.length === 1);
+assert("AI conflicts 回写历史", hAI.conflicts.length === 1);
+assert("AI score>=75 自动入待投递", hAI.isInShortlist === true);
+// score<75 不自动入库
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([{id:502, title:"B岗", score:60, status:"待投递", isInShortlist:false, reasons:[], interview_tips:[], conflicts:[]}]));
+vm.runInContext("lastAnalysis.histId = 502;", sandbox);
+updateHistoryWithAI({...sampleReport, score: 60});
+assert("AI score<75 不自动入库", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].isInShortlist === false);
+// 不推荐 不自动入库
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([{id:503, title:"C岗", score:60, status:"待投递", isInShortlist:false, reasons:[], interview_tips:[], conflicts:[]}]));
+vm.runInContext("lastAnalysis.histId = 503;", sandbox);
+updateHistoryWithAI({...sampleReport, score: 88, result: "不推荐"});
+assert("不推荐 不自动入库", JSON.parse(sandbox.localStorage.getItem("jdfit_history"))[0].isInShortlist === false);
+// 无 lastAnalysis.histId 时安全返回
+vm.runInContext("lastAnalysis = null;", sandbox);
+updateHistoryWithAI(sampleReport);
+assert("updateHistoryWithAI null-safe", true);
+vm.runInContext("lastAnalysis = {histId: 999999};", sandbox);
+updateHistoryWithAI(sampleReport);
+assert("updateHistoryWithAI unknown histId no crash", true);
+// buildOptimizeHTML: 简历优化建议渲染
+const buildOptimizeHTML = exportFn("buildOptimizeHTML");
+const optHTML = buildOptimizeHTML(["补充用户分层关键词", "量化转化率数据"]);
+assert("optimize renders suggestions", optHTML.includes("补充用户分层关键词") && optHTML.includes("量化转化率数据"));
+assert("optimize has honesty disclaimer", optHTML.includes("不虚构"));
+assert("optimize empty list shows message", buildOptimizeHTML([]).includes("未返回优化建议"));
+assert("optimize null list shows message", buildOptimizeHTML(null).includes("未返回优化建议"));
+assert("optimize XSS escaped", !buildOptimizeHTML(["<script>bad()</script>"]).includes("<script>bad"));
 
 console.log("=== Test 15: 简历文件上传（PDF/Word/TXT本地解析）===");
 // HTML 结构：上传按钮、file input、检查提示条
@@ -420,30 +537,18 @@ assert("upload stays local (privacy wording)", code3.includes("本地解析，�
 assert("no localhost in lib urls", !JSON.stringify(LIBS).includes("localhost"));
 assert("no 127.0.0.1 in lib urls", !JSON.stringify(LIBS).includes("127.0.0.1"));
 
-console.log("=== Test 16: 贴JD区对比简历选择器 ===");
-assert("jdResumeSel selector present", code3.includes('id="jdResumeSel"'));
-assert("selector wired to pickResumeForCompare", code3.includes("onchange=\"pickResumeForCompare(this.value)\""));
-assert("picker message element present", code3.includes('id="jdResumeMsg"'));
-assert("pickResumeForCompare is function", typeof exportFn("pickResumeForCompare") === "function");
-assert("renderJDResumeSel is function", typeof exportFn("renderJDResumeSel") === "function");
-// renderPasteFromBank 同步刷新对比选择器
-assert("renderPasteFromBank refreshes jd selector", code3.includes("renderPasteFromBank(){") && code3.split("renderPasteFromBank(){")[1].split("}")[0].includes("renderJDResumeSel()") || code3.includes("renderJDResumeSel();"));
-// 选择后载入编辑区（loadResumeToEditor 联动）
-assert("pick loads resume into editor", code3.includes("pickResumeForCompare") && code3.split("function pickResumeForCompare")[1].split("\n").slice(0,8).join("\n").includes("loadResumeToEditor"));
-// 选择器列出已存简历
-sandbox.jdResumeSel = undefined; // fakeEl 已按 id 提供
-setVal("resumeName", "运营版");
-setVal("resumeText", "运营简历正文：用户分层、转化分析。");
-sandbox.saveResume();
-sandbox.renderJDResumeSel();
-const selEl = sandbox.document.getElementById("jdResumeSel");
-assert("jdResumeSel lists saved resume", selEl._html.includes("运营版"));
-assert("jdResumeSel has placeholder option", selEl._html.includes("选择一份储备简历用于对比"));
-// 无简历时选择器仅有占位
-sandbox.localStorage.removeItem("jdfit_resumes");
-sandbox.currentResumeId = null;
-sandbox.renderJDResumeSel();
-assert("jdResumeSel empty bank shows only placeholder", selEl._html.includes("选择一份储备简历用于对比") && !selEl._html.includes("运营版"));
+console.log("=== Test 16: 分析页简化（职觉规格） ===");
+assert("jdResumeSel selector removed", !code3.includes('id="jdResumeSel"'));
+assert("pickResumeForCompare removed", !code3.includes("function pickResumeForCompare"));
+assert("renderJDResumeSel removed", !code3.includes("function renderJDResumeSel"));
+assert("renderPasteFromBank no longer refreshes jd selector", !code3.includes("renderJDResumeSel();"));
+assert("demo buttons removed from analyze page", !code3.includes("loadDemo('kimi')"));
+// guessJDTitle：从JD首行猜岗位名（≤30字）
+const guessJDTitle = exportFn("guessJDTitle");
+assert("guessJDTitle takes first line", guessJDTitle("商业分析实习生\n岗位职责：负责策略复盘。") === "商业分析实习生");
+assert("guessJDTitle empty for long first line", guessJDTitle("这是一个特别长的首行超过三十个字符的职位描述标题行内容超长了呀") === "");
+assert("guessJDTitle empty for empty text", guessJDTitle("") === "");
+assert("guessJDTitle skips blank lines", guessJDTitle("\n\n  \n增长运营实习生\n负责增长策略。") === "增长运营实习生");
 
 console.log("=== Test 17: 引导页改为上传简历（删引导填写） ===");
 assert("guide tab removed", !code3.includes('id="tabGuide"'));
@@ -471,5 +576,158 @@ assert("handleResumeFile has target param", code3.includes("async function handl
 assert("generic branch mentions 生成画像 check", code3.includes("再点「生成画像」"));
 assert("banner branch still for resumeText", code3.includes('target === "resumeText"'));
 
-console.log("\n=== Results: " + pass + " passed, " + fail + " failed ===");
-if (fail > 0) process.exit(1);
+console.log("=== Test 18: 行业分类 + 待投递列表 + 仪表盘 ===");
+// 行业分类：8个默认 + localStorage 覆盖
+const DEFAULT_CATEGORIES = exportFn("DEFAULT_CATEGORIES");
+const loadCategories = exportFn("loadCategories");
+const saveCategories = exportFn("saveCategories");
+assert("8 default categories", DEFAULT_CATEGORIES.length === 8);
+assert("default categories content", ["互联网","金融","咨询","医药","快消","国企","外企","创业公司"].every(c=>DEFAULT_CATEGORIES.indexOf(c) >= 0));
+assert("loadCategories defaults when storage empty", loadCategories().length === 8);
+saveCategories(["互联网","游戏"]);
+assert("saveCategories persists override", JSON.stringify(loadCategories()) === JSON.stringify(["互联网","游戏"]));
+sandbox.localStorage.removeItem("jdfit_categories");
+assert("loadCategories falls back after removal", loadCategories().length === 8);
+// 待投递列表
+const shortlistItems = exportFn("shortlistItems");
+const renderShortlist = exportFn("renderShortlist");
+const renderDashboard = exportFn("renderDashboard");
+const toggleShortlist = exportFn("toggleShortlist");
+const populateSlIndustries = exportFn("populateSlIndustries");
+const showTab = exportFn("showTab");
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([
+  {id:1, company:"甲司", position:"运营实习", industry:"互联网", score:80, status:"待投递", note:"优先投", isInShortlist:true, date:"2026-09-01"},
+  {id:2, company:"乙司", position:"行研实习", industry:"金融", score:85, status:"已投递", note:"", isInShortlist:true, date:"2026-09-02"},
+  {id:3, company:"丙司", position:"分析实习", industry:"互联网", score:60, status:"不投递", note:"", isInShortlist:false, date:"2026-09-03"}
+]));
+assert("shortlistItems filters isInShortlist", shortlistItems().length === 2);
+// 行业筛选下拉：列出已用行业
+populateSlIndustries();
+const indEl = sandbox.document.getElementById("slIndustryFilter");
+assert("industry filter lists used industries", indEl._html.includes("互联网") && indEl._html.includes("金融"));
+assert("industry filter has 全部行业 option", indEl._html.includes("全部行业"));
+// 表格渲染
+renderShortlist();
+const slBox = sandbox.document.getElementById("shortlistBox");
+assert("shortlist table has 7 columns", ["公司","岗位","行业","分数","状态","备注","操作"].every(t=>slBox._html.includes(t)));
+assert("shortlist shows only shortlisted items", slBox._html.includes("甲司") && slBox._html.includes("乙司") && !slBox._html.includes("丙司"));
+assert("shortlist renders score", slBox._html.includes(">80<"));
+assert("shortlist renders note value", slBox._html.includes("优先投"));
+assert("shortlist pin button wired", slBox._html.includes("toggleShortlist(1)"));
+assert("shortlist status select wired", slBox._html.includes("setHistStatus(1"));
+// 状态筛选
+setVal("slStatusFilter", "已投递");
+renderShortlist();
+assert("status filter works", slBox._html.includes("乙司") && !slBox._html.includes("甲司"));
+setVal("slStatusFilter", "");
+setVal("slIndustryFilter", "互联网");
+renderShortlist();
+assert("industry filter works", slBox._html.includes("甲司") && !slBox._html.includes("乙司"));
+setVal("slIndustryFilter", "");
+setVal("slStatusFilter", "已放弃");
+renderShortlist();
+assert("filter with no match shows empty hint", slBox._html.includes("暂无待投递岗位"));
+setVal("slStatusFilter", "");
+// 空待投递提示
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([{id:9, company:"丁司", position:"x", score:50, status:"待投递", isInShortlist:false}]));
+renderShortlist();
+assert("empty shortlist shows hint with 75 rule", slBox._html.includes("75"));
+// toggleShortlist 手动加入/移出
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([
+  {id:1, company:"甲司", position:"运营实习", industry:"互联网", score:80, status:"待投递", note:"", isInShortlist:true},
+  {id:3, company:"丙司", position:"分析实习", industry:"互联网", score:60, status:"不投递", note:"", isInShortlist:false}
+]));
+toggleShortlist(3);
+assert("toggle adds to shortlist", shortlistItems().length === 2);
+toggleShortlist(1);
+assert("toggle removes from shortlist", shortlistItems().length === 1 && shortlistItems()[0].id === 3);
+toggleShortlist(999); // unknown id no crash
+assert("toggleShortlist unknown id no crash", true);
+// 仪表盘统计
+sandbox.localStorage.setItem("jdfit_history", JSON.stringify([
+  {id:1, company:"甲司", position:"运营实习", industry:"互联网", score:80, status:"待投递", note:"", isInShortlist:true, date:"2026-09-01"},
+  {id:2, company:"乙司", position:"行研实习", industry:"金融", score:85, status:"已投递", note:"", isInShortlist:true, date:"2026-09-02"},
+  {id:3, company:"丙司", position:"分析实习", industry:"互联网", total:9, status:"不投递", note:"", isInShortlist:false, date:"2026-09-03"},
+  {id:4, company:"丁司", position:"产品实习", industry:"国企", score:0, status:"已放弃", note:"", isInShortlist:false, date:"2026-09-04", hasVeto:true}
+]));
+renderDashboard();
+const statGrid = sandbox.document.getElementById("statGrid");
+assert("dashboard stats: 累计检测=4", statGrid._html.includes("累计检测") && statGrid._html.includes(">4<"));
+assert("dashboard stats: 待投递池=2", statGrid._html.includes("待投递池") && statGrid._html.includes(">2<"));
+assert("dashboard stats: 已投递=1", statGrid._html.includes("已投递") && statGrid._html.includes(">1<"));
+// 平均分：(80+85+75+0)/4 = 60
+assert("dashboard stats: 平均匹配分=60 (histScore 归一混合制)", statGrid._html.includes("平均匹配分") && statGrid._html.includes(">60<"));
+const recentBox = sandbox.document.getElementById("recentBox");
+assert("recent shows top-3 items (not the 4th)", recentBox._html.includes("甲司") && !recentBox._html.includes("丁司"));
+assert("recent item is clickable (viewHistory)", recentBox._html.includes("viewHistory(1)"));
+// showTab 切换不抛错
+showTab("analyze");
+showTab("dash");
+assert("showTab runs without error", true);
+
+console.log("=== Test 19: analyzeJD 开始分析全链路（后端调用 + 降级） ===");
+(async () => {
+  // 准备：画像（含红线）+ 简历 + JD
+  saveProfileObj({name:"AJ", basics:"", maxMonths:6, assets:[], skillGaps:[],
+    vetoes:[{cat:"custom", label:"红线", keywords:"外包", mode:"veto"},
+            {cat:"boringWork", label:"不喜欢", keywords:"会议纪要", mode:"warn"}]});
+  setVal("resumeText", "测试简历内容");
+  const aiBox = sandbox.document.getElementById("aiBox");
+  const verdictBox = sandbox.document.getElementById("verdictBox");
+  // --- 成功路径 ---
+  sandbox.localStorage.setItem("jdfit_history", JSON.stringify([]));
+  setVal("jdCompany", "测试司");
+  setVal("jdIndustry", "互联网");
+  setVal("jdText", "商业分析实习生\n负责用户运营策略与数据复盘，JD内容足够长超过二十个字的要求已满足。");
+  let captured = null;
+  sandbox.fetch = async (url, opts) => {
+    captured = {url: url, body: JSON.parse(opts.body)};
+    return {ok: true, json: async () => ({ok: true, engine: "llm", report: {result: "推荐", score: 82, status: "匹配", score_details: {}, conflicts: [], reasons: ["理由A"], interview_tips: ["建议B"]}})};
+  };
+  await sandbox.analyzeJD();
+  assert("analyzeJD posts to /analyze", captured && captured.url.endsWith("/analyze"));
+  assert("analyzeJD sends 4-field body", captured && captured.body.resume === "测试简历内容" && JSON.stringify(captured.body.redLines) === JSON.stringify(["外包"]) && JSON.stringify(captured.body.dislikes) === JSON.stringify(["会议纪要"]));
+  let hist = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
+  assert("analyzeJD creates history record", hist.length === 1);
+  assert("analyzeJD stores company/industry", hist[0].company === "测试司" && hist[0].industry === "互联网");
+  assert("analyzeJD writes AI score/result into history", hist[0].score === 82 && hist[0].result === "推荐");
+  assert("analyzeJD auto shortlists at score 82", hist[0].isInShortlist === true);
+  assert("analyzeJD renders AI report", aiBox._html.includes("推荐") && aiBox._html.includes("82"));
+  assert("local quick screen ran (verdict rendered)", verdictBox._html.length > 0);
+  // --- 降级路径：fetch 抛错 ---
+  sandbox.fetch = async () => { throw new Error("network down"); };
+  sandbox.localStorage.setItem("jdfit_history", JSON.stringify([]));
+  setVal("jdText", "增长运营实习生\n负责用户增长与投放策略复盘，JD内容足够长超过二十个字的要求已满足。");
+  await sandbox.analyzeJD();
+  assert("fallback shows degradation message", aiBox._html.includes("降级") && aiBox._html.includes("network down"));
+  hist = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
+  assert("fallback still saves local history record", hist.length === 1 && typeof hist[0].total === "number" && hist[0].score >= 0);
+  // --- 输入校验：JD太短 ---
+  setVal("jdText", "太短");
+  await sandbox.analyzeJD();
+  assert("short JD rejected (no new record)", JSON.parse(sandbox.localStorage.getItem("jdfit_history")).length === 1);
+  // --- 无简历时提示 ---
+  setVal("resumeText", "");
+  sandbox.currentResumeId = null;
+  sandbox.fetch = async () => ({ok: true, json: async () => ({ok: true, report: {result: "推荐"}})});
+  setVal("jdText", "商业分析实习生\n负责策略复盘与洞察产出，JD内容足够长超过二十个字的要求已满足。");
+  await sandbox.analyzeJD();
+  assert("missing resume rejected (no new record)", JSON.parse(sandbox.localStorage.getItem("jdfit_history")).length === 1);
+  setVal("resumeText", "测试简历内容");
+  // --- 旧格式报告检测 ---
+  sandbox.fetch = async () => ({ok: true, json: async () => ({ok: true, report: {verdict: "旧版字段"}})});
+  await sandbox.analyzeJD();
+  assert("legacy report format triggers fallback wording", aiBox._html.includes("旧版报告格式"));
+  // --- 红线命中（后端规则引擎路径）---
+  sandbox.fetch = async () => ({ok: true, json: async () => ({ok: true, engine: "rule", report: {result: "不推荐", score: 30, reasons: ["命中红线：外包"], conflicts: [], interview_tips: []}})});
+  sandbox.localStorage.setItem("jdfit_history", JSON.stringify([]));
+  setVal("jdText", "运营实习生（外包岗位）\n负责内容整理与社群维护，JD内容足够长超过二十个字的要求已满足。");
+  await sandbox.analyzeJD();
+  hist = JSON.parse(sandbox.localStorage.getItem("jdfit_history"));
+  assert("rule-engine rejection stored with 不推荐", hist[0].result === "不推荐");
+  assert("不推荐 not shortlisted even at high local score", hist[0].isInShortlist === false);
+  assert("rule engine note rendered", aiBox._html.includes("规则引擎"));
+
+  console.log("\n=== Results: " + pass + " passed, " + fail + " failed ===");
+  if (fail > 0) process.exit(1);
+})().catch(e => { console.error("TEST RUNNER ERROR:", e); process.exit(1); });
