@@ -7,7 +7,7 @@
 <style>
   :root{
     --bg:#f6f7fb; --card:#ffffff; --ink:#1f2430; --sub:#5b6472; --line:#e6e9f0;
-    --blue:#2563EB; --blue-bg:#eef2ff; --green:#0f9d58; --green-bg:#e8f5ee;
+    --blue:#2b5cff; --blue-bg:#eef2ff; --green:#0f9d58; --green-bg:#e8f5ee;
     --amber:#c77700; --amber-bg:#fdf3e2; --red:#d93025; --red-bg:#fceae9;
     --chip:#f0f3f9;
   }
@@ -113,33 +113,7 @@
   .hi-track input{flex:1; min-width:150px; width:auto; padding:6px 10px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font-family:inherit;}
   .hi-note{font-size:12.5px; color:var(--sub); margin-top:4px; word-break:break-all;}
   .rb-x{margin-left:6px; color:#a5231b; font-weight:700; cursor:pointer;}
-  /* ============ v0.9：底部导航 + 标签页 + 仪表盘 + 待投递 ============ */
-  .bottom-nav{position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; background:#fff; border-top:1px solid var(--line); box-shadow:0 -2px 10px rgba(20,30,60,.06); padding:4px 0 calc(5px + env(safe-area-inset-bottom));}
-  .bottom-nav .bn-item{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0 4px; cursor:pointer; color:var(--sub); font-size:11.5px; font-weight:600; border:none; background:none; font-family:inherit; transition:.15s;}
-  .bottom-nav .bn-item .bn-ico{font-size:19px; line-height:1;}
-  .bottom-nav .bn-item.active{color:var(--blue);}
-  body.has-nav .wrap{padding-bottom:88px;}
-  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px;}
-  .stat-card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 10px; text-align:center;}
-  .stat-card .sc-num{font-size:24px; font-weight:800; color:var(--blue); line-height:1.2;}
-  .stat-card .sc-label{font-size:12px; color:var(--sub); margin-top:2px;}
-  .mini-hist{display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:#fbfcfe; cursor:pointer; transition:.15s;}
-  .mini-hist:hover{border-color:var(--blue); background:var(--blue-bg);}
-  .mini-hist .mh-title{font-weight:600; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .mini-hist .mh-meta{font-size:12px; color:var(--sub); margin-top:2px;}
-  .mini-hist .mh-score{font-weight:800; font-size:15px; flex-shrink:0; color:var(--blue);}
-  .filter-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
-  .filter-row select, .filter-row input{width:auto; min-width:120px; flex:0 0 auto; padding:8px 10px; font-size:13px;}
-  .sl-table{width:100%; border-collapse:collapse; font-size:13.5px;}
-  .sl-table th{text-align:left; color:var(--sub); font-size:12.5px; padding:8px 10px; border-bottom:2px solid var(--line); white-space:nowrap;}
-  .sl-table td{padding:10px; border-bottom:1px solid var(--line); vertical-align:middle;}
-  .sl-table td input{font-size:13px; padding:5px 8px; min-width:120px;}
-  .sl-table td select{font-size:13px; padding:5px 8px; width:auto;}
-  .pin-btn{background:none; border:1px solid var(--line); border-radius:8px; padding:3px 10px; cursor:pointer; font-size:12.5px; color:var(--sub); font-family:inherit; white-space:nowrap;}
-  .pin-btn.on{background:var(--blue-bg); color:var(--blue); border-color:var(--blue);}
-  .spin{display:inline-block; width:14px; height:14px; border:2px solid var(--blue); border-top-color:transparent; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px;}
-  @keyframes spin{to{transform:rotate(360deg);}}
-  @media(max-width:640px){ h1{font-size:21px;} .advice-item b, .ov-row b{flex-basis:100%;} .hi-track{flex-direction:column;} .hi-track select{flex:1 1 auto; min-width:0;} .stat-grid{grid-template-columns:repeat(2,1fr);} .sl-table th:nth-child(3), .sl-table td:nth-child(3){display:none;} .bottom-nav .bn-item{font-size:11px;} }
+  @media(max-width:640px){ h1{font-size:21px;} .advice-item b, .ov-row b{flex-basis:100%;} .hi-track{flex-direction:column;} .hi-track select{flex:1 1 auto; min-width:0;} }
 </style>
 </head>
 <body>
@@ -204,208 +178,153 @@
     </div>
   </div>
 
-  <!-- ================= 主应用（4标签页 + 底部导航） ================= -->
+  <!-- ================= 主应用 ================= -->
   <div id="mainApp" class="hidden">
     <header>
       <h1><span class="logo">◉</span> JD适配判断器</h1>
       <button class="btn btn-ghost" onclick="backToOnboarding()">↺ 重新设计画像</button>
     </header>
-    <p class="tagline">贴入实习JD → 一票否决检查 + 六维评分 → AI深度分析 + 简历优化 → 待投递跟踪。原则：<b>AI做执行，人做判断</b>。</p>
+    <p class="tagline">贴入实习JD → 自动跑一票否决检查 + 六维评分建议 → 你做最终判断。原则：<b>AI做执行，人做判断</b>。</p>
 
-    <!-- ============ 标签页1：仪表盘 ============ -->
-    <div class="tabpane active" id="pane-dash">
-      <div class="stat-grid" id="statGrid"></div>
-
-      <!-- 画像概览 -->
-      <div class="card" id="ovCard">
-        <h2>👤 当前画像概览（本地数据）</h2>
-        <div id="ovBox"></div>
-        <div class="actions">
-          <button class="btn btn-ghost" onclick="toggleProfile()">⚙️ 高级编辑（JSON）</button>
-          <button class="btn btn-ghost" onclick="toggleVetoEditor()">🚫 编辑我的红线</button>
-          <button class="btn btn-ghost" onclick="exportProfile()">📤 导出画像</button>
-          <button class="btn btn-ghost" onclick="clearAll()">🗑️ 清空重填</button>
-        </div>
+    <!-- 画像概览 -->
+    <div class="card" id="ovCard">
+      <h2>👤 当前画像概览（本地数据）</h2>
+      <div id="ovBox"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="toggleProfile()">⚙️ 高级编辑（JSON）</button>
+        <button class="btn btn-ghost" onclick="toggleVetoEditor()">🚫 编辑我的红线</button>
+        <button class="btn btn-ghost" onclick="exportProfile()">📤 导出画像</button>
+        <button class="btn btn-ghost" onclick="clearAll()">🗑️ 清空重填</button>
       </div>
+    </div>
 
-      <!-- 画像高级编辑 -->
-      <div class="card hidden" id="profileCard">
-        <h2>⚙️ 画像编辑（知识库，可编辑）</h2>
-        <p style="font-size:13px;color:var(--sub);margin-bottom:10px;">评分引擎会拿这些资产标签去JD里找命中。修改后点「保存画像」，数据存在本地浏览器。结构说明：name/basics/maxMonths 为基础信息；assets 为你的能力资产（label名称、pattern匹配关键词、story面试故事）；skillGaps 为短板；vetoes 为你的否决红线（每项含cat分类、label标签、keywords关键词、mode模式）；intent 为求职意向。</p>
-        <textarea id="profileEditor" style="min-height:300px; font-size:12.5px;"></textarea>
-        <div class="actions">
-          <button class="btn btn-primary" onclick="saveProfile()">保存画像</button>
-          <span id="profileMsg" class="copy-ok"></span>
-        </div>
+    <!-- 我的储备简历 -->
+    <div class="card" id="resumeCard">
+      <h2>📄 我的储备简历 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="resumeCount"></span></h2>
+      <p class="hint">可存多份简历全文（如通用版 / 运营版 / BA版），随时点开对照查看；也用于贴JD时快速取用。支持上传 PDF/Word/TXT 自动识别文字（本地解析，文件不上传），识别后需人工检查确认。仅存本地浏览器。</p>
+      <div id="resumeList"></div>
+      <div style="margin-top:10px;">
+        <label>简历名称</label>
+        <input type="text" id="resumeName" placeholder="例：互联网运营版">
       </div>
-
-      <!-- 红线编辑面板 -->
-      <div class="card hidden" id="vetoCard">
-        <h2>🚫 我的一票否决红线（可编辑）</h2>
-        <p style="font-size:13px;color:var(--sub);margin-bottom:10px;">每个分类填入你自己的关键词（逗号分隔），留空则该分类不检查。修改后点「保存红线」，下次分析时生效。实习时长根据画像中的月数上限自动判断。其中「不喜欢的工作内容」分类为警告级（不否决、仅提示），其余为否决级。</p>
-        <div id="vetoEditList"></div>
-        <div class="actions">
-          <button class="btn btn-primary" onclick="saveVetoes()">保存红线</button>
-          <span id="vetoSaveMsg" class="copy-ok"></span>
+      <div style="margin-top:10px;">
+        <label>简历全文（点击上方已存的简历可载入查看/编辑，或上传文件自动识别）</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <button class="btn btn-ghost" onclick="document.getElementById('resumeFile').click()">📤 上传 PDF / Word / TXT</button>
+          <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display:none" onchange="handleResumeFile(this)">
+          <span id="uploadMsg" style="font-size:12.5px;color:var(--sub);"></span>
         </div>
+        <div id="uploadCheckBanner" class="hidden" style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--ink);">
+          <b>✅ 已自动识别 <span id="uploadCharCount">0</span> 字（来源：<span id="uploadSource">-</span>）。</b>
+          机器识别可能有错漏（尤其PDF可能丢换行、Word表格文字可能乱序），请<b>通读下方编辑区逐段检查</b>：①姓名/联系方式是否完整；②经历条目有无缺失或串行；③有无乱码。确认无误后再点「💾 保存简历」。
+          <div style="margin-top:8px;">
+            <button class="btn btn-ghost" onclick="confirmResumeUpload()">我已检查无误</button>
+          </div>
+        </div>
+        <textarea id="resumeText" placeholder="粘贴简历全文，或点上方「上传 PDF / Word / TXT」自动识别…点「保存简历」存入储备区"></textarea>
       </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveResume()">💾 保存简历</button>
+        <button class="btn btn-ghost" onclick="newResumeDraft()">＋ 新建一份</button>
+        <button class="btn btn-ghost" onclick="copyResumeText()">📋 复制全文</button>
+        <span id="resumeMsg" class="copy-ok"></span>
+      </div>
+    </div>
 
-      <!-- 快捷入口 -->
+    <!-- 红线编辑面板 -->
+    <div class="card hidden" id="vetoCard">
+      <h2>🚫 我的一票否决红线（可编辑）</h2>
+      <p style="font-size:13px;color:var(--sub);margin-bottom:10px;">每个分类填入你自己的关键词（逗号分隔），留空则该分类不检查。修改后点「保存红线」，下次分析时生效。实习时长根据画像中的月数上限自动判断。</p>
+      <div id="vetoEditList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveVetoes()">保存红线</button>
+        <span id="vetoSaveMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 画像高级编辑 -->
+    <div class="card hidden" id="profileCard">
+      <h2>⚙️ 画像编辑（知识库，可编辑）</h2>
+      <p style="font-size:13px;color:var(--sub);margin-bottom:10px;">评分引擎会拿这些资产标签去JD里找命中。修改后点「保存画像」，数据存在本地浏览器。结构说明：name/basics/maxMonths 为基础信息；assets 为你的能力资产（label名称、pattern匹配关键词、story面试故事）；skillGaps 为短板；vetoes 为你的否决红线（每项含cat分类、label标签、keywords关键词、mode模式）；intent 为求职意向。</p>
+      <textarea id="profileEditor" style="min-height:300px; font-size:12.5px;"></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveProfile()">保存画像</button>
+        <span id="profileMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 岗位检测历史 -->
+    <div class="card" id="historyCard">
+      <h2>📋 岗位检测历史 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="histCount"></span></h2>
+      <div id="historyBox"></div>
+      <div class="actions" id="histActions" style="display:none;">
+        <button class="btn btn-ghost" onclick="clearHistory()">🗑️ 清空全部历史</button>
+      </div>
+    </div>
+
+    <!-- 输入 -->
+    <div class="card">
+      <h2><span class="num">1</span> 贴入JD</h2>
+      <div class="row">
+        <div><label>岗位名称（选填）</label><input type="text" id="jdTitle" placeholder="例：商业分析实习生"></div>
+        <div><label>公司（选填）</label><input type="text" id="jdCompany" placeholder="例：Kimi / 月之暗面"></div>
+      </div>
+      <div style="margin-top:12px;">
+        <label>JD全文</label>
+        <textarea id="jdText" placeholder="把职位描述全文粘贴到这里…"></textarea>
+      </div>
+      <div style="margin-top:12px;">
+        <label>对比简历（从「储备简历」选一份，贴JD时可切换对比不同版本）</label>
+        <select id="jdResumeSel" onchange="pickResumeForCompare(this.value)"><option value="">— 选择一份储备简历用于对比 —</option></select>
+        <span id="jdResumeMsg" style="font-size:12.5px;color:var(--sub);"></span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="analyze()">⚡ 开始分析</button>
+        <button class="btn btn-ghost" onclick="clearJDInputs()">🧹 一键清空</button>
+        <button class="btn btn-ghost" onclick="loadDemo('kimi')">示例：Kimi增长管培</button>
+        <button class="btn btn-ghost" onclick="loadDemo('seo')">示例：SEO&GEO增长</button>
+        <span id="clearMsg" class="copy-ok"></span>
+      </div>
+    </div>
+
+    <!-- 结果 -->
+    <div id="result" class="hidden">
+      <div id="verdictBox"></div>
+
       <div class="card">
-        <h2>🚀 快捷入口</h2>
-        <div class="actions" style="margin-top:0;">
-          <button class="btn btn-primary" onclick="showTab('analyze')">⚡ 分析新JD</button>
-          <button class="btn btn-ghost" onclick="showTab('shortlist')">📌 待投递列表</button>
-          <button class="btn btn-ghost" onclick="showTab('history')">📋 检测历史</button>
-          <button class="btn btn-ghost" onclick="showTab('analyze');setTimeout(function(){var c=document.getElementById('resumeCard');if(c)c.scrollIntoView({behavior:'smooth'});},80)">📄 储备简历</button>
-        </div>
+        <h2>🚫 一票否决检查 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（基于你的红线设置）</span></h2>
+        <div id="vetoBox"></div>
       </div>
 
-      <!-- 最近检测 -->
       <div class="card">
-        <h2>🕐 最近检测 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（最近3条，点击回看）</span></h2>
-        <div id="recentBox"></div>
+        <h2><span class="num">2</span> 六维评分 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（系统建议分，可用滑杆改成你的判断）</span></h2>
+        <div id="dimsBox"></div>
+        <div style="margin-top:6px; font-size:13px; color:var(--sub);">总分（按权重加权）：<b id="totalScore" style="font-size:16px;color:var(--ink);"></b> / 12 · 权重调0 = 该维度不计入 · <a style="color:var(--blue);cursor:pointer;" onclick="resetWeights()">重置为等权</a></div>
       </div>
-    </div>
 
-    <!-- ============ 标签页2：JD分析 ============ -->
-    <div class="tabpane" id="pane-analyze">
-      <!-- 输入 -->
       <div class="card">
-        <h2><span class="num">1</span> 贴入JD</h2>
-        <div class="row">
-          <div><label>岗位名称（选填）</label><input type="text" id="jdTitle" placeholder="例：商业分析实习生"></div>
-          <div><label>公司（选填）</label><input type="text" id="jdCompany" placeholder="例：Kimi / 月之暗面"></div>
-          <div><label>行业（选填）</label><select id="jdIndustry"><option value="">— 选择行业 —</option></select></div>
-        </div>
-        <div style="margin-top:12px;">
-          <label>JD全文</label>
-          <textarea id="jdText" placeholder="把职位描述全文粘贴到这里…"></textarea>
-        </div>
-        <div style="margin-top:12px;">
-          <label>对比简历（从「储备简历」选一份，贴JD时可切换对比不同版本）</label>
-          <select id="jdResumeSel" onchange="pickResumeForCompare(this.value)"><option value="">— 选择一份储备简历用于对比 —</option></select>
-          <span id="jdResumeMsg" style="font-size:12.5px;color:var(--sub);"></span>
-        </div>
+        <h2><span class="num">3</span> 投递建议</h2>
+        <div id="adviceBox"></div>
         <div class="actions">
-          <button class="btn btn-primary" onclick="analyze()">⚡ 开始分析</button>
-          <button class="btn btn-ghost" onclick="clearJDInputs()">🧹 一键清空</button>
-          <button class="btn btn-ghost" onclick="loadDemo('kimi')">示例：Kimi增长管培</button>
-          <button class="btn btn-ghost" onclick="loadDemo('seo')">示例：SEO&GEO增长</button>
-          <span id="clearMsg" class="copy-ok"></span>
+          <button class="btn btn-ghost" onclick="copyReport()">📋 复制评估报告</button>
+          <span id="copyMsg" class="copy-ok"></span>
         </div>
       </div>
 
-      <!-- 结果 -->
-      <div id="result" class="hidden">
-        <div id="verdictBox"></div>
-
-        <div class="card">
-          <h2>🚫 一票否决检查 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（基于你的红线设置）</span></h2>
-          <div id="vetoBox"></div>
-        </div>
-
-        <div class="card">
-          <h2><span class="num">2</span> 六维评分 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（系统建议分，可用滑杆改成你的判断）</span></h2>
-          <div id="dimsBox"></div>
-          <div style="margin-top:6px; font-size:13px; color:var(--sub);">总分（按权重加权）：<b id="totalScore" style="font-size:16px;color:var(--ink);"></b> / 12 · 权重调0 = 该维度不计入 · <a style="color:var(--blue);cursor:pointer;" onclick="resetWeights()">重置为等权</a></div>
-        </div>
-
-        <div class="card">
-          <h2><span class="num">3</span> 投递建议</h2>
-          <div id="adviceBox"></div>
-          <div class="actions">
-            <button class="btn btn-ghost" onclick="copyReport()">📋 复制评估报告</button>
-            <span id="copyMsg" class="copy-ok"></span>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2><span class="num">4</span> AI 深度分析 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（可选 · DeepSeek，经 zhijue-backend 生成）</span></h2>
-          <div style="font-size:13px;color:var(--sub);margin-bottom:10px;">⚠️ 点击后会把<b>储备简历编辑区的简历全文 + 本页JD + 你的红线/不喜欢清单</b>发送到你自己的后端（workers.dev）并调用 DeepSeek；画像与历史记录不上传。本地规则引擎结果不受影响，AI结果仅作参考对照。</div>
-          <div class="actions">
-            <button class="btn btn-primary" id="aiBtn" onclick="aiAnalyze()">🤖 调用 AI 分析这份JD</button>
-            <button class="btn btn-ghost" id="optBtn" onclick="optimizeResume()">✨ 进一步优化简历</button>
-            <span id="aiMsg" class="copy-ok"></span>
-          </div>
-          <div id="aiBox"></div>
-          <div id="optBox"></div>
-        </div>
-      </div>
-
-      <!-- 我的储备简历 -->
-      <div class="card" id="resumeCard">
-        <h2>📄 我的储备简历 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="resumeCount"></span></h2>
-        <p class="hint">可存多份简历全文（如通用版 / 运营版 / BA版），随时点开对照查看；也用于贴JD时快速取用。支持上传 PDF/Word/TXT 自动识别文字（本地解析，文件不上传），识别后需人工检查确认。仅存本地浏览器。</p>
-        <div id="resumeList"></div>
-        <div style="margin-top:10px;">
-          <label>简历名称</label>
-          <input type="text" id="resumeName" placeholder="例：互联网运营版">
-        </div>
-        <div style="margin-top:10px;">
-          <label>简历全文（点击上方已存的简历可载入查看/编辑，或上传文件自动识别）</label>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-            <button class="btn btn-ghost" onclick="document.getElementById('resumeFile').click()">📤 上传 PDF / Word / TXT</button>
-            <input type="file" id="resumeFile" accept=".pdf,.docx,.txt" style="display:none" onchange="handleResumeFile(this)">
-            <span id="uploadMsg" style="font-size:12.5px;color:var(--sub);"></span>
-          </div>
-          <div id="uploadCheckBanner" class="hidden" style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px;color:var(--ink);">
-            <b>✅ 已自动识别 <span id="uploadCharCount">0</span> 字（来源：<span id="uploadSource">-</span>）。</b>
-            机器识别可能有错漏（尤其PDF可能丢换行、Word表格文字可能乱序），请<b>通读下方编辑区逐段检查</b>：①姓名/联系方式是否完整；②经历条目有无缺失或串行；③有无乱码。确认无误后再点「💾 保存简历」。
-            <div style="margin-top:8px;">
-              <button class="btn btn-ghost" onclick="confirmResumeUpload()">我已检查无误</button>
-            </div>
-          </div>
-          <textarea id="resumeText" placeholder="粘贴简历全文，或点上方「上传 PDF / Word / TXT」自动识别…点「保存简历」存入储备区"></textarea>
-        </div>
+      <div class="card">
+        <h2><span class="num">4</span> AI 深度分析 <span style="font-weight:400;font-size:12.5px;color:var(--sub);">（可选 · DeepSeek，经 zhijue-backend 生成）</span></h2>
+        <div style="font-size:13px;color:var(--sub);margin-bottom:10px;">⚠️ 点击后会把<b>储备简历编辑区的简历全文 + 本页JD</b>发送到你自己的后端（workers.dev）并调用 DeepSeek；画像与历史记录不上传。本地规则引擎结果不受影响，AI结果仅作参考对照。</div>
         <div class="actions">
-          <button class="btn btn-primary" onclick="saveResume()">💾 保存简历</button>
-          <button class="btn btn-ghost" onclick="newResumeDraft()">＋ 新建一份</button>
-          <button class="btn btn-ghost" onclick="copyResumeText()">📋 复制全文</button>
-          <span id="resumeMsg" class="copy-ok"></span>
+          <button class="btn btn-primary" id="aiBtn" onclick="aiAnalyze()">🤖 调用 AI 分析这份JD</button>
+          <span id="aiMsg" class="copy-ok"></span>
         </div>
+        <div id="aiBox"></div>
       </div>
     </div>
 
-    <!-- ============ 标签页3：待投递列表 ============ -->
-    <div class="tabpane" id="pane-shortlist">
-      <div class="card" id="shortlistCard">
-        <h2>📌 待投递列表 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="slCount"></span></h2>
-        <p class="hint">AI分析综合分 ≥75（或本地评分 ≥75/100 且无红线命中）的岗位自动入库；也可在「检测历史」里点 📌 手动加入/移出。</p>
-        <div class="filter-row">
-          <select id="slStatusFilter" onchange="renderShortlist()"><option value="">全部状态</option></select>
-          <select id="slIndustryFilter" onchange="renderShortlist()"><option value="">全部行业</option></select>
-        </div>
-        <div id="shortlistBox" style="overflow-x:auto;"></div>
-      </div>
-    </div>
-
-    <!-- ============ 标签页4：检测历史 ============ -->
-    <div class="tabpane" id="pane-history">
-      <div class="card" id="historyCard">
-        <h2>📋 岗位检测历史 <span style="font-weight:400;font-size:12.5px;color:var(--sub);" id="histCount"></span></h2>
-        <div class="filter-row">
-          <select id="histStatusFilter" onchange="renderHistory()"><option value="">全部状态</option></select>
-          <input type="text" id="histKeyFilter" placeholder="按公司/岗位筛选…" oninput="renderHistory()">
-        </div>
-        <div id="historyBox"></div>
-        <div class="actions" id="histActions" style="display:none;">
-          <button class="btn btn-ghost" onclick="clearHistory()">🗑️ 清空全部历史</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer-note">JD适配判断器 v0.9 · 底部导航四标签（仪表盘 / JD分析 / 待投递 / 历史） · 规则引擎 + AI深度分析（DeepSeek）+ 简历优化建议 · 储备简历（PDF/Word上传识别+人工检查） · 综合分≥75自动入待投递 · 画像与历史仅存本地浏览器 · AI做执行，人做判断</div>
+    <div class="footer-note">JD适配判断器 v0.8 · 规则引擎 + 可选AI深度分析（DeepSeek） · 储备简历（支持PDF/Word上传识别+人工检查）+ JD一键清空 + 投递状态跟踪 + 画像导入导出 + 权重可调 + 引导式红线 + 检测历史 · 画像与历史仅存本地浏览器；文件解析在本地完成，仅点击「AI分析」时上传简历与JD · AI做执行，人做判断</div>
   </div>
 </div>
-
-<!-- ============ 底部导航（v0.9） ============ -->
-<nav id="bottomNav" class="bottom-nav hidden">
-  <button class="bn-item active" id="nav-dash" onclick="showTab('dash')"><span class="bn-ico">🏠</span>仪表盘</button>
-  <button class="bn-item" id="nav-analyze" onclick="showTab('analyze')"><span class="bn-ico">⚡</span>JD分析</button>
-  <button class="bn-item" id="nav-shortlist" onclick="showTab('shortlist')"><span class="bn-ico">📌</span>待投递</button>
-  <button class="bn-item" id="nav-history" onclick="showTab('history')"><span class="bn-ico">📋</span>历史</button>
-</nav>
 
 <script>
 /* ============ 空白模板（无任何人真实信息） ============ */
@@ -421,17 +340,6 @@ const BLANK_PROFILE = {
 
 /* ============ AI 深度分析后端（Cloudflare Worker → DeepSeek） ============ */
 const AI_BACKEND_URL = "https://zhijue-backend.luojingyi417.workers.dev";
-
-/* ============ 行业分类（v0.9，localStorage 可覆盖） ============ */
-const DEFAULT_CATEGORIES = ["互联网","金融","咨询","医药","快消","国企","外企","创业公司"];
-function loadCategories(){
-  try{
-    const s = localStorage.getItem("jdfit_categories");
-    if(s){ const a = JSON.parse(s); if(Array.isArray(a) && a.length) return a; }
-  }catch(e){}
-  return DEFAULT_CATEGORIES.slice();
-}
-function saveCategories(arr){ try{ localStorage.setItem("jdfit_categories", JSON.stringify(arr)); }catch(e){} }
 
 /* ============ 否决红线分类（引导式，用户自己填关键词） ============ */
 const VETO_CATEGORIES = [
@@ -714,13 +622,9 @@ function clearJDInputs(){
     const el = document.getElementById(id);
     if(el) el.value = "";
   });
-  const ind = document.getElementById("jdIndustry");
-  if(ind) ind.value = "";
   lastAnalysis = null;
   const r = document.getElementById("result");
   if(r) r.classList.add("hidden");
-  const ab = document.getElementById("aiBox"); if(ab) ab.innerHTML = "";
-  const ob = document.getElementById("optBox"); if(ob) ob.innerHTML = "";
   msg("clearMsg", "✓ 已清空，可贴下一个JD");
 }
 function msg(id, text){
@@ -849,24 +753,26 @@ function enterProfile(p){
   saveProfileObj(p);
   document.getElementById("onboarding").classList.add("hidden");
   document.getElementById("mainApp").classList.remove("hidden");
-  const nav = document.getElementById("bottomNav");
-  if(nav) nav.classList.remove("hidden");
-  try{ document.body.classList.add("has-nav"); }catch(e){}
-  migrateHistory();
   renderOverview();
   renderVetoEditList();
   renderHistory();
-  renderShortlist();
-  renderDashboard();
-  showTab("dash");
 }
 function backToOnboarding(){
   document.getElementById("mainApp").classList.add("hidden");
   document.getElementById("onboarding").classList.remove("hidden");
-  const nav = document.getElementById("bottomNav");
-  if(nav) nav.classList.add("hidden");
-  try{ document.body.classList.remove("has-nav"); }catch(e){}
   renderVetoGuides("vetoGuideList", PROFILE ? PROFILE.vetoes : []);
+  // 回填基础信息到引导填写表单
+  if(PROFILE){
+    // 尝试拆解 basics 回填
+    const parts = (PROFILE.basics||"").split(" · ");
+    if(parts[0]) document.getElementById("g_school").value = parts[0] || "";
+    if(parts[1]) document.getElementById("g_major").value = parts[1] || "";
+    if(parts[2]) document.getElementById("g_avail").value = parts[2] || "";
+    if(parts[3]) document.getElementById("g_days").value = (parts[3]||"").replace("/周","") || "";
+    if(PROFILE.maxMonths) document.getElementById("g_months").value = PROFILE.maxMonths;
+    if(PROFILE.name) document.getElementById("g_name").value = PROFILE.name;
+    if(PROFILE.intent) document.getElementById("g_intent").value = PROFILE.intent;
+  }
 }
 function clearAll(){
   if(!confirm("确定清空本地画像并重新填写？")) return;
@@ -1002,8 +908,6 @@ function loadDemo(k){
 function analyze(){
   const title = document.getElementById("jdTitle").value.trim();
   const company = document.getElementById("jdCompany").value.trim();
-  const industryEl = document.getElementById("jdIndustry");
-  const industry = industryEl ? industryEl.value : "";
   const text = document.getElementById("jdText").value.trim();
   if(!text){ alert("请先粘贴JD全文"); return; }
   const full = (title + "\n" + company + "\n" + text);
@@ -1139,7 +1043,7 @@ function analyze(){
   else if(/(长期|深度培养|headcount|HC)/.test(full)){ d6score = 1; d6ev = ["有长期培养暗示"]; }
   dims.push({name:"转正/长期价值", score:d6score, note:"2=明确转正 · 1=有暗示 · 0.5=无", ev:d6ev});
 
-  lastAnalysis = {title, company, industry, dims, vetoResults, hasVeto, hasWarn, raw:text};
+  lastAnalysis = {title, company, dims, vetoResults, hasVeto, hasWarn, raw:text};
   render(title, company);
   saveToHistory(title, company);
 }
@@ -1154,17 +1058,6 @@ function currentResumeTextForAI(){
   }
   return "";
 }
-/* 从画像红线派生：否决级关键词 → redLines；警告级（不喜欢的工作内容）→ dislikes */
-function profileRedLines(){
-  return ((PROFILE && PROFILE.vetoes) || [])
-    .filter(v=>v.mode !== "warn" && v.keywords)
-    .reduce((acc,v)=>acc.concat(v.keywords.split(/[，,、;\n]/).map(s=>s.trim()).filter(Boolean)), []);
-}
-function profileDislikes(){
-  return ((PROFILE && PROFILE.vetoes) || [])
-    .filter(v=>v.mode === "warn" && v.keywords)
-    .reduce((acc,v)=>acc.concat(v.keywords.split(/[，,、;\n]/).map(s=>s.trim()).filter(Boolean)), []);
-}
 async function aiAnalyze(){
   const box = document.getElementById("aiBox");
   const btn = document.getElementById("aiBtn");
@@ -1173,17 +1066,15 @@ async function aiAnalyze(){
   if(!jd){ alert("请先贴入JD并完成一次本地分析"); return; }
   if(!resume){ alert("AI分析需要简历：请在「储备简历」区粘贴简历全文（或点选一份已保存的简历）"); return; }
   if(btn) btn.disabled = true;
-  if(box) box.innerHTML = '<div style="padding:14px;color:var(--sub);font-size:13.5px;"><span class="spin"></span>DeepSeek 分析中，通常需要 10–30 秒，请不要关闭页面…</div>';
+  if(box) box.innerHTML = '<div style="padding:14px;color:var(--sub);font-size:13.5px;">⏳ DeepSeek 分析中，通常需要 10–30 秒，请不要关闭页面…</div>';
   try{
     const resp = await fetch(AI_BACKEND_URL + "/analyze", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({resume: resume, jd: jd, redLines: profileRedLines(), dislikes: profileDislikes()})
+      body: JSON.stringify({resume: resume, jd: jd})
     });
     const data = await resp.json().catch(()=>({}));
     if(!resp.ok || !data.ok) throw new Error(data.error || ("HTTP " + resp.status));
-    if(!data.report || !data.report.result) throw new Error("后端返回了旧版报告格式，请部署最新 zhijue-backend");
-    updateHistoryWithAI(data.report);
     if(box) box.innerHTML = buildAIReportHTML(data.report);
   }catch(e){
     if(box) box.innerHTML = '<div style="padding:12px 14px;border:1px solid #e5b1b1;background:#fdf0f0;border-radius:10px;color:#a33;font-size:13.5px;">❌ AI分析失败：'+esc(e.message||String(e))+'<br>可稍后重试，或直接使用上方本地规则引擎结果。</div>';
@@ -1191,104 +1082,33 @@ async function aiAnalyze(){
     if(btn) btn.disabled = false;
   }
 }
-/* AI 报告回写历史记录：score/result/reasons/interview_tips/conflicts + ≥75 自动入待投递 */
-function updateHistoryWithAI(report){
-  if(!report || !lastAnalysis || !lastAnalysis.histId) return;
-  let hist = loadHistory();
-  const it = hist.find(h=>h.id===lastAnalysis.histId);
-  if(!it) return;
-  if(typeof report.score === "number") it.score = Math.round(report.score);
-  if(report.result) it.result = report.result;
-  if(Array.isArray(report.reasons)) it.reasons = report.reasons;
-  if(Array.isArray(report.interview_tips)) it.interview_tips = report.interview_tips;
-  if(Array.isArray(report.conflicts)) it.conflicts = report.conflicts;
-  if(typeof it.score === "number" && it.score >= 75 && report.result !== "不推荐") it.isInShortlist = true;
-  saveHistory(hist);
-  renderHistory();
-  renderShortlist();
-  renderDashboard();
-}
 function buildAIReportHTML(r){
   if(!r || typeof r !== "object") return "";
-  const resultMap = {"推荐":"🟢","可考虑":"🟡","不推荐":"🔴"};
-  const emoji = resultMap[r.result] || "⚪";
-  const vetoed = (r.status === "被一票否决");
+  const verdictEmoji = /推荐/.test(r.verdict||"") ? "🟢" : /谨慎/.test(r.verdict||"") ? "🟡" : /不建议/.test(r.verdict||"") ? "🔴" : "⚪";
+  const dimRows = (r.dimensions||[]).map(d=>
+    '<tr>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap;"><b>'+esc(d.name||"")+'</b></td>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);text-align:center;"><b>'+esc(String(d.score??"—"))+'</b></td>'+
+    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);color:var(--sub);">'+esc(d.comment||"")+'</td>'+
+    '</tr>').join("");
   const listHTML = (arr) => (arr && arr.length)
     ? '<ul style="margin:6px 0 0 18px;padding:0;font-size:13.5px;">'+arr.map(x=>'<li style="margin:3px 0;">'+esc(String(x))+'</li>').join("")+'</ul>'
     : '<div style="color:var(--sub);font-size:13px;">—</div>';
   const section = (icon, title, body) =>
     '<div style="margin-top:14px;"><div style="font-size:13.5px;font-weight:600;">'+icon+' '+title+'</div>'+body+'</div>';
-  const conflictsHTML = (r.conflicts && r.conflicts.length)
-    ? r.conflicts.map(c=>{
-        const lv = String(c.level||"");
-        const color = lv.indexOf("高")>=0 ? "#a5231b" : (lv.indexOf("中")>=0 ? "#8a5a00" : "#0b6e40");
-        return '<div style="border:1px solid var(--line);border-left:3px solid '+color+';border-radius:10px;padding:10px 12px;margin-top:8px;background:#fff;font-size:13.5px;">'+
-          '<b style="color:'+color+';">'+esc(lv||"冲突")+'</b> · '+esc(String(c.item||""))+
-          (c.jd_content ? '<div style="color:var(--sub);margin-top:4px;font-size:12.5px;">JD原文：'+esc(String(c.jd_content))+'</div>' : '')+
-        '</div>';
-      }).join("")
-    : '<div style="color:var(--sub);font-size:13px;margin-top:6px;">未检测到与「不喜欢的工作内容」的冲突</div>';
-  const sd = r.score_details || {};
-  const dimRows = Object.keys(sd).map(k=>
-    '<tr><td style="padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap;"><b>'+esc(k)+'</b></td>'+
-    '<td style="padding:6px 10px;border-bottom:1px solid var(--line);text-align:center;"><b>'+esc(String(sd[k]))+'</b> / 100</td></tr>').join("");
   return ''+
-    '<div style="border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfcfe;margin-top:12px;">'+
+    '<div style="border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfcfe;">'+
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
-      '<span style="font-size:18px;font-weight:700;">'+emoji+' '+esc(r.result||"未知")+'</span>'+
-      (typeof r.score === "number" ? '<span style="font-size:14px;color:var(--sub);">综合匹配分 <b style="color:var(--ink);font-size:16px;">'+Math.round(r.score)+'</b>/100</span>' : '')+
-      '<span class="chip '+(vetoed?"miss":"hit")+'">'+esc(r.status||"")+'</span>'+
+      '<span style="font-size:18px;font-weight:700;">'+verdictEmoji+' '+esc(r.verdict||"未知")+'</span>'+
+      (r.overallScore != null ? '<span style="font-size:14px;color:var(--sub);">综合分 <b style="color:var(--ink);">'+esc(String(r.overallScore))+'</b>/100</span>' : '')+
     '</div>'+
-    (dimRows ? '<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px;">'+dimRows+'</table>' : '')+
-    section("⚠️", "画像冲突检测（引用JD原文）", conflictsHTML)+
-    section("🧾", "核心理由", listHTML(r.reasons))+
-    section("💡", "面试准备建议", listHTML(r.interview_tips))+
-    '<div style="margin-top:12px;font-size:12px;color:var(--sub);border-top:1px dashed var(--line);padding-top:10px;">以上由 DeepSeek 生成，仅作参考——最终投递判断以你的红线和六维评分为准（AI做执行，人做判断）。综合分≥75已自动加入待投递列表。</div>'+
+    (r.summary ? '<div style="margin-top:8px;font-size:13.5px;line-height:1.6;">'+esc(r.summary)+'</div>' : '')+
+    (dimRows ? '<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px;"><thead><tr style="text-align:left;color:var(--sub);font-size:12.5px;"><th style="padding:4px 10px;border-bottom:1px solid var(--line);">维度</th><th style="padding:4px 10px;border-bottom:1px solid var(--line);text-align:center;">分</th><th style="padding:4px 10px;border-bottom:1px solid var(--line);">点评</th></tr></thead><tbody>'+dimRows+'</tbody></table>' : '')+
+    section("💪", "优势", listHTML(r.strengths))+
+    section("⚠️", "差距", listHTML(r.gaps))+
+    section("✍️", "简历修改建议", listHTML(r.resumeSuggestions))+
+    '<div style="margin-top:12px;font-size:12px;color:var(--sub);border-top:1px dashed var(--line);padding-top:10px;">以上由 DeepSeek 生成，仅作参考——最终投递判断以你的红线和六维评分为准（AI做执行，人做判断）。</div>'+
     '</div>';
-}
-
-/* ---------- 简历优化建议（v0.9：POST /optimize → DeepSeek） ---------- */
-async function optimizeResume(){
-  const box = document.getElementById("optBox");
-  const btn = document.getElementById("optBtn");
-  const jd = (lastAnalysis && lastAnalysis.raw) ? lastAnalysis.raw : val("jdText");
-  const resume = currentResumeTextForAI();
-  if(!jd){ alert("请先贴入JD并完成一次本地分析"); return; }
-  if(!resume){ alert("简历优化需要简历：请在「储备简历」区粘贴或点选一份简历"); return; }
-  if(btn) btn.disabled = true;
-  if(box) box.innerHTML = '<div style="padding:14px;color:var(--sub);font-size:13.5px;"><span class="spin"></span>DeepSeek 正在针对这份JD给出简历优化建议，约需10–30秒…</div>';
-  try{
-    const resp = await fetch(AI_BACKEND_URL + "/optimize", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({resume: resume, jd: jd})
-    });
-    const data = await resp.json().catch(()=>({}));
-    if(!resp.ok || !data.ok) throw new Error(data.error || ("HTTP " + resp.status));
-    const list = Array.isArray(data.suggestions) ? data.suggestions : [];
-    if(lastAnalysis && lastAnalysis.histId){
-      let hist = loadHistory();
-      const it = hist.find(h=>h.id===lastAnalysis.histId);
-      if(it){
-        it.resume_advice = list;
-        saveHistory(hist);
-        renderHistory();
-      }
-    }
-    if(box) box.innerHTML = buildOptimizeHTML(list);
-  }catch(e){
-    if(box) box.innerHTML = '<div style="padding:12px 14px;border:1px solid #e5b1b1;background:#fdf0f0;border-radius:10px;color:#a33;font-size:13.5px;">❌ 简历优化失败：'+esc(e.message||String(e))+'，可稍后重试。</div>';
-  }finally{
-    if(btn) btn.disabled = false;
-  }
-}
-function buildOptimizeHTML(list){
-  if(!list || !list.length) return '<div style="color:var(--sub);font-size:13px;padding:10px 0;">本次未返回优化建议。</div>';
-  return '<div style="border:1px solid var(--line);border-radius:12px;padding:16px;background:#fbfcfe;margin-top:12px;">'+
-    '<div style="font-size:14px;font-weight:700;">✨ 简历优化建议（针对本JD）</div>'+
-    '<ol style="margin:10px 0 0 20px;font-size:13.5px;">'+list.map(s=>'<li style="margin:6px 0;">'+esc(String(s))+'</li>').join("")+'</ol>'+
-    '<div style="margin-top:10px;font-size:12px;color:var(--sub);border-top:1px dashed var(--line);padding-top:8px;">建议已存入本条检测记录。修改简历以真实经历为准，不虚构（AI做执行，人做判断）。</div>'+
-  '</div>';
 }
 
 /* ---------- 维度权重（v0.5：每个维度 0-2，总分按权重归一到 /12） ---------- */
@@ -1440,94 +1260,31 @@ function copyReport(){
 }
 
 /* ============ 岗位检测历史 ============ */
-const HIST_STATUS = ["待投递","已投递","不投递","已放弃"];
-/* 旧五态 → 新四态 迁移映射（v0.9） */
-const STATUS_MIGRATE = {"未投递":"待投递","已投递":"已投递","面试中":"已投递","已结束":"已放弃","不投":"不投递"};
-function migrateHistory(){
-  let hist = loadHistory();
-  let changed = false;
-  hist.forEach(h=>{
-    if(h.status && HIST_STATUS.indexOf(h.status) < 0){
-      h.status = STATUS_MIGRATE[h.status] || "待投递";
-      changed = true;
-    }
-    if(typeof h.isInShortlist !== "boolean"){ h.isInShortlist = false; changed = true; }
-  });
-  if(changed) saveHistory(hist);
-}
-/* 历史记录统一取 0-100 分：优先 AI/新记录的 score，旧记录按 total/12 折算 */
-function histScore(h){
-  if(typeof h.score === "number") return Math.round(h.score);
-  return Math.round((h.total||0) / 12 * 100);
-}
+const HIST_STATUS = ["未投递","已投递","面试中","已结束","不投"];
 function saveToHistory(title, company){
   if(!lastAnalysis) return;
   const total = computeTotal();
   const b = band(total, lastAnalysis.hasVeto);
-  const percent = Math.round(total / 12 * 100);
-  const hitAssets = (lastAnalysis.dims[1] && lastAnalysis.dims[1].hits) ? lastAnalysis.dims[1].hits.length : 0;
-  const reasons = lastAnalysis.hasVeto
-    ? ["命中一票否决红线", "建议直接放弃该岗位", "若红线设置有误请先修正画像"]
-    : ["六维总分"+total.toFixed(1)+"/12（"+percent+"分）",
-       "经历资产命中"+hitAssets+"项",
-       percent >= 75 ? "综合分达标，已自动加入待投递" : "综合分未达自动入库线（75）"];
   const item = {
     id: Date.now(),
-    timestamp: Date.now(),
     date: nowStr(),
     title: title || "未命名岗位",
-    position: title || "未命名岗位",
     company: company || "",
-    industry: lastAnalysis.industry || "",
-    jd: (lastAnalysis.raw||"").slice(0, 500),
-    jdSnippet: (lastAnalysis.raw||"").slice(0, 500),
     total: total,
-    score: percent,
-    result: b.label,
-    reasons: reasons,
-    interview_tips: [],
-    conflicts: [],
-    resume_advice: null,
     verdictLabel: b.label,
     verdictEmoji: b.emoji,
     verdictCls: b.cls,
     hasVeto: lastAnalysis.hasVeto,
-    status: "待投递",
+    status: "未投递",
     note: "",
-    isInShortlist: (percent >= 75 && !lastAnalysis.hasVeto),
     dims: lastAnalysis.dims.map(d=>({name:d.name, score:d.score, note:d.note})),
-    vetoResults: lastAnalysis.vetoResults
+    vetoResults: lastAnalysis.vetoResults,
+    jdSnippet: (lastAnalysis.raw||"").slice(0, 500)
   };
-  lastAnalysis.histId = item.id;
   let hist = loadHistory();
   hist.unshift(item);
   saveHistory(hist);
-  populateSlIndustries();
   renderHistory();
-  renderShortlist();
-  renderDashboard();
-}
-
-/* ---------- 下拉选项装配（v0.9） ---------- */
-function populateStaticSelects(){
-  const cats = loadCategories();
-  const ind = document.getElementById("jdIndustry");
-  if(ind) ind.innerHTML = '<option value="">— 选择行业 —</option>'+cats.map(c=>'<option>'+esc(c)+'</option>').join("");
-  const statusOpts = '<option value="">全部状态</option>'+HIST_STATUS.map(s=>'<option>'+s+'</option>').join("");
-  const sf = document.getElementById("slStatusFilter");
-  if(sf) sf.innerHTML = statusOpts;
-  const hf = document.getElementById("histStatusFilter");
-  if(hf) hf.innerHTML = statusOpts;
-  populateSlIndustries();
-}
-function populateSlIndustries(){
-  const el = document.getElementById("slIndustryFilter");
-  if(!el) return;
-  const cur = el.value;
-  const used = [];
-  loadHistory().forEach(h=>{ if(h.industry && used.indexOf(h.industry) < 0) used.push(h.industry); });
-  el.innerHTML = '<option value="">全部行业</option>'+used.map(c=>'<option>'+esc(c)+'</option>').join("");
-  if(cur && used.indexOf(cur) >= 0) el.value = cur;
 }
 
 function renderHistory(){
@@ -1540,44 +1297,27 @@ function renderHistory(){
   if(countEl) countEl.textContent = hist.length ? "（"+hist.length+"条）" : "";
   if(actionsEl) actionsEl.style.display = hist.length ? "flex" : "none";
 
-  // 筛选：状态 + 关键词
-  const sf = document.getElementById("histStatusFilter");
-  const kf = document.getElementById("histKeyFilter");
-  const st = sf ? sf.value : "";
-  const kw = kf ? String(kf.value||"").trim() : "";
-  let items = hist;
-  if(st) items = items.filter(h=>h.status===st);
-  if(kw) items = items.filter(h=>((h.company||"")+(h.title||"")+(h.position||"")).indexOf(kw)>=0);
-
   if(!hist.length){
-    box.innerHTML = '<div style="font-size:13.5px;color:var(--sub);padding:12px 0;">暂无检测记录。去「JD分析」贴入JD并分析后，结果会自动存档到这里。</div>';
-    return;
-  }
-  if(!items.length){
-    box.innerHTML = '<div style="font-size:13.5px;color:var(--sub);padding:12px 0;">没有符合筛选条件的记录。</div>';
+    box.innerHTML = '<div style="font-size:13.5px;color:var(--sub);padding:12px 0;">暂无检测记录。贴入JD并分析后，结果会自动存档到这里。</div>';
     return;
   }
 
-  box.innerHTML = items.map(h=>{
-    const titleLine = esc(h.position||h.title||"未命名岗位") + (h.company ? " · "+esc(h.company) : "");
-    const st2 = HIST_STATUS.indexOf(h.status) >= 0 ? h.status : "待投递";
-    const si = HIST_STATUS.indexOf(st2);
-    const sc = histScore(h);
+  box.innerHTML = hist.map(h=>{
+    const titleLine = esc(h.title) + (h.company ? " · "+esc(h.company) : "");
+    const st = HIST_STATUS.indexOf(h.status) >= 0 ? h.status : "未投递";
+    const si = HIST_STATUS.indexOf(st);
     const noteLine = h.note ? '<div class="hi-note">📝 '+esc(h.note)+'</div>' : "";
-    const pinBtn = '<button class="pin-btn'+(h.isInShortlist?" on":"")+'" onclick="event.stopPropagation();toggleShortlist('+h.id+')" title="加入/移出待投递">'+(h.isInShortlist?"📌 已在待投":"📌 加入待投")+'</button>';
-    const aiChip = (h.interview_tips && h.interview_tips.length) || (h.resume_advice && h.resume_advice.length) ? ' <span class="chip hit">AI已分析</span>' : "";
     return '<div class="hist-item" onclick="viewHistory('+h.id+')">'+
       '<div class="hi-left">'+
-        '<div class="hi-title">'+titleLine+aiChip+'</div>'+
-        '<div class="hi-meta">'+esc(h.date)+(h.industry?" · "+esc(h.industry):"")+' · <span class="hist-badge '+(h.verdictCls||"amber")+'">'+(h.verdictEmoji||"⚪")+' '+esc(h.verdictLabel||h.result||"")+'</span> · '+sc+'/100 · <span class="hi-status s'+(si===0?1:(si===3?3:(si===2?4:2)))+'">'+esc(st2)+'</span></div>'+
+        '<div class="hi-title">'+titleLine+'</div>'+
+        '<div class="hi-meta">'+esc(h.date)+' · <span class="hist-badge '+h.verdictCls+'">'+h.verdictEmoji+' '+esc(h.verdictLabel)+'</span> · '+h.total.toFixed(1)+'/12 · <span class="hi-status s'+si+'">'+esc(st)+'</span></div>'+
         noteLine+
         '<div class="hi-track" onclick="event.stopPropagation();">'+
-          '<select onchange="setHistStatus('+h.id+', this.value)" title="投递状态">'+HIST_STATUS.map(s=>'<option'+(s===st2?' selected="selected"':'')+'>'+s+'</option>').join("")+'</select>'+
+          '<select onchange="setHistStatus('+h.id+', this.value)" title="投递状态">'+HIST_STATUS.map(s=>'<option'+(s===st?' selected="selected"':'')+'>'+s+'</option>').join("")+'</select>'+
           '<input type="text" value="'+escAttr(h.note||"")+'" placeholder="备注：可填日期/进展，如 2026-09-01 已投BOSS直聘" onchange="setHistNote('+h.id+', this.value)">'+
-          pinBtn+
         '</div>'+
       '</div>'+
-      '<div class="hi-score" style="color:'+(h.verdictCls==="green"?"#0b6e40":(h.verdictCls==="red"?"#a5231b":"#8a5a00"))+'">'+sc+'</div>'+
+      '<div class="hi-score" style="color:'+(h.verdictCls==="green"?"#0b6e40":(h.verdictCls==="red"?"#a5231b":"#8a5a00"))+'">'+h.total.toFixed(1)+'</div>'+
       '<button class="hi-del" onclick="event.stopPropagation();deleteHistory('+h.id+')">✕</button>'+
     '</div>';
   }).join("");
@@ -1587,11 +1327,9 @@ function setHistStatus(id, v){
   let hist = loadHistory();
   const it = hist.find(h=>h.id===id);
   if(!it) return;
-  it.status = HIST_STATUS.indexOf(v) >= 0 ? v : "待投递";
+  it.status = HIST_STATUS.indexOf(v) >= 0 ? v : "未投递";
   saveHistory(hist);
   renderHistory();
-  renderShortlist();
-  renderDashboard();
 }
 function setHistNote(id, v){
   let hist = loadHistory();
@@ -1605,45 +1343,19 @@ function viewHistory(id){
   const hist = loadHistory();
   const item = hist.find(h=>h.id===id);
   if(!item) return;
-  showTab("analyze");
-  document.getElementById("jdTitle").value = item.position || item.title || "";
-  document.getElementById("jdCompany").value = item.company || "";
-  const indEl = document.getElementById("jdIndustry");
-  if(indEl) indEl.value = item.industry || "";
-  document.getElementById("jdText").value = item.jd || item.jdSnippet || "";
+  document.getElementById("jdTitle").value = item.title;
+  document.getElementById("jdCompany").value = item.company;
+  document.getElementById("jdText").value = item.jdSnippet;
   lastAnalysis = {
-    title: item.position || item.title,
+    title: item.title,
     company: item.company,
-    industry: item.industry || "",
-    histId: item.id,
-    dims: item.dims || [],
-    vetoResults: item.vetoResults || [],
+    dims: item.dims,
+    vetoResults: item.vetoResults,
     hasVeto: item.hasVeto,
     hasWarn: false,
-    raw: item.jd || item.jdSnippet || ""
+    raw: item.jdSnippet
   };
   render(item.title, item.company);
-  // 回看上次 AI 分析的增量信息（面试建议 / 简历优化建议 / 理由）
-  const aiEl = document.getElementById("aiBox");
-  if(aiEl){
-    const parts = [];
-    if(item.reasons && item.reasons.length){
-      parts.push('<div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfcfe;margin-top:12px;">'+
-        '<div style="font-size:13.5px;font-weight:600;">🧾 核心理由（上次分析）</div>'+
-        '<ul style="margin:8px 0 0 18px;font-size:13.5px;">'+item.reasons.map(r=>'<li style="margin:4px 0;">'+esc(String(r))+'</li>').join("")+'</ul></div>');
-    }
-    if(item.interview_tips && item.interview_tips.length){
-      parts.push('<div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fbfcfe;margin-top:12px;">'+
-        '<div style="font-size:13.5px;font-weight:600;">💡 面试准备建议（上次AI分析）</div>'+
-        '<ul style="margin:8px 0 0 18px;font-size:13.5px;">'+item.interview_tips.map(r=>'<li style="margin:4px 0;">'+esc(String(r))+'</li>').join("")+'</ul></div>');
-    }
-    if(item.resume_advice && item.resume_advice.length){
-      parts.push(buildOptimizeHTML(item.resume_advice));
-    }
-    aiEl.innerHTML = parts.join("");
-  }
-  const optEl = document.getElementById("optBox");
-  if(optEl) optEl.innerHTML = item.resume_advice && item.resume_advice.length ? buildOptimizeHTML(item.resume_advice) : "";
   document.getElementById("result").scrollIntoView({behavior:"smooth", block:"start"});
 }
 
@@ -1652,129 +1364,24 @@ function deleteHistory(id){
   hist = hist.filter(h=>h.id!==id);
   saveHistory(hist);
   renderHistory();
-  renderShortlist();
-  renderDashboard();
 }
 
 function clearHistory(){
-  if(!confirm("确定清空全部检测历史（含待投递列表）？此操作不可撤销。")) return;
+  if(!confirm("确定清空全部检测历史？此操作不可撤销。")) return;
   saveHistory([]);
   renderHistory();
-  renderShortlist();
-  renderDashboard();
-}
-
-/* ============ 待投递列表（v0.9） ============ */
-function shortlistItems(){
-  return loadHistory().filter(h=>h.isInShortlist);
-}
-function renderShortlist(){
-  const box = document.getElementById("shortlistBox");
-  if(!box) return;
-  const all = shortlistItems();
-  const cnt = document.getElementById("slCount");
-  if(cnt) cnt.textContent = all.length ? "（"+all.length+"个）" : "";
-  const sf = document.getElementById("slStatusFilter");
-  const inf = document.getElementById("slIndustryFilter");
-  const st = sf ? sf.value : "";
-  const ind = inf ? inf.value : "";
-  let items = all;
-  if(st) items = items.filter(h=>h.status===st);
-  if(ind) items = items.filter(h=>(h.industry||"")===ind);
-  if(!items.length){
-    box.innerHTML = '<div style="font-size:13.5px;color:var(--sub);padding:12px 0;">暂无待投递岗位。AI综合分≥75自动入库，或在「检测历史」里点 📌 手动加入。</div>';
-    return;
-  }
-  box.innerHTML = '<table class="sl-table"><thead><tr><th>公司</th><th>岗位</th><th>行业</th><th>分数</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>'+
-    items.map(h=>{
-      const st2 = HIST_STATUS.indexOf(h.status) >= 0 ? h.status : "待投递";
-      const sc = histScore(h);
-      return '<tr>'+
-        '<td><b>'+esc(h.company||"—")+'</b></td>'+
-        '<td>'+esc(h.position||h.title||"")+'</td>'+
-        '<td>'+esc(h.industry||"—")+'</td>'+
-        '<td><b style="color:var(--blue);">'+sc+'</b></td>'+
-        '<td><select onchange="setHistStatus('+h.id+', this.value)">'+HIST_STATUS.map(s=>'<option'+(s===st2?' selected="selected"':'')+'>'+s+'</option>').join("")+'</select></td>'+
-        '<td><input type="text" value="'+escAttr(h.note||"")+'" placeholder="备注…" onchange="setHistNote('+h.id+', this.value)"></td>'+
-        '<td><button class="pin-btn on" onclick="toggleShortlist('+h.id+')">📌 移出</button></td>'+
-      '</tr>';
-    }).join("")+'</tbody></table>';
-}
-function toggleShortlist(id){
-  let hist = loadHistory();
-  const it = hist.find(h=>h.id===id);
-  if(!it) return;
-  it.isInShortlist = !it.isInShortlist;
-  saveHistory(hist);
-  renderShortlist();
-  renderHistory();
-  renderDashboard();
-}
-
-/* ============ 仪表盘（v0.9） ============ */
-function renderDashboard(){
-  const hist = loadHistory();
-  const grid = document.getElementById("statGrid");
-  if(grid){
-    const shortN = hist.filter(h=>h.isInShortlist).length;
-    const appliedN = hist.filter(h=>h.status==="已投递").length;
-    const scored = hist.filter(h=>typeof h.score === "number" || typeof h.total === "number");
-    const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+histScore(b),0)/scored.length) : 0;
-    grid.innerHTML =
-      '<div class="stat-card"><div class="sc-num">'+hist.length+'</div><div class="sc-label">累计检测</div></div>'+
-      '<div class="stat-card"><div class="sc-num">'+shortN+'</div><div class="sc-label">待投递池</div></div>'+
-      '<div class="stat-card"><div class="sc-num">'+appliedN+'</div><div class="sc-label">已投递</div></div>'+
-      '<div class="stat-card"><div class="sc-num">'+(scored.length?avg:"—")+'</div><div class="sc-label">平均匹配分</div></div>';
-  }
-  const recent = document.getElementById("recentBox");
-  if(recent){
-    const top = hist.slice(0,3);
-    if(!top.length){
-      recent.innerHTML = '<div style="font-size:13.5px;color:var(--sub);">还没有检测记录——去「JD分析」贴入第一份JD吧。</div>';
-    }else{
-      recent.innerHTML = top.map(h=>{
-        const sc = histScore(h);
-        return '<div class="mini-hist" onclick="viewHistory('+h.id+')">'+
-          '<div style="flex:1;min-width:0;">'+
-            '<div class="mh-title">'+esc(h.company||h.position||h.title||"未命名")+(h.company?" · "+esc(h.position||h.title||""):"")+'</div>'+
-            '<div class="mh-meta">'+esc(h.date||"")+(h.industry?" · "+esc(h.industry):"")+' · '+esc(h.status||"待投递")+(h.isInShortlist?" · 📌待投":"")+'</div>'+
-          '</div>'+
-          '<div class="mh-score">'+sc+'</div>'+
-        '</div>';
-      }).join("");
-    }
-  }
-}
-
-/* ============ 标签页切换（v0.9 底部导航） ============ */
-function showTab(name){
-  ["dash","analyze","shortlist","history"].forEach(k=>{
-    const p = document.getElementById("pane-"+k);
-    const n = document.getElementById("nav-"+k);
-    if(p) p.classList.toggle("active", k===name);
-    if(n) n.classList.toggle("active", k===name);
-  });
-  try{ window.scrollTo({top:0, behavior:"smooth"}); }catch(e){}
 }
 
 /* ---------- 启动 ---------- */
 window.addEventListener("DOMContentLoaded", ()=>{
   renderVetoGuides("vetoGuideList", PROFILE ? PROFILE.vetoes : []);
   renderResumeList();
-  populateStaticSelects();
   if(PROFILE){
     document.getElementById("onboarding").classList.add("hidden");
     document.getElementById("mainApp").classList.remove("hidden");
-    const nav = document.getElementById("bottomNav");
-    if(nav) nav.classList.remove("hidden");
-    try{ document.body.classList.add("has-nav"); }catch(e){}
-    migrateHistory();
     renderOverview();
     renderVetoEditList();
     renderHistory();
-    renderShortlist();
-    renderDashboard();
-    showTab("dash");
   } else {
     document.getElementById("onboarding").classList.remove("hidden");
     document.getElementById("mainApp").classList.add("hidden");
